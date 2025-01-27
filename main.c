@@ -61,7 +61,7 @@ Sound checkSound;
 
 void AddMove(int pieceIndex,Vector2 endPos);
 void GenerateAllLegalMovesForPiece(int pieceIndex);
-void GenerateAllLegalMoves();
+void GenerateAllLegalMoves(bool next);
 void DrawBoard();
 void DrawPieces(Texture2D piecesTexture);
 void SetupPiecesFromFEN(const char *fen);
@@ -109,7 +109,7 @@ int main(int argc, char const *argv[])
     SetupPiecesFromFEN(token);
     gameState.playingWithComputer=false;
     gameState.isWhiteTurn = strtok(NULL, " ")[0] == 'w';
-    GenerateAllLegalMoves();
+    GenerateAllLegalMoves(gameState.isWhiteTurn);
     SetTargetFPS(144);
     while (!WindowShouldClose())
     {   
@@ -119,13 +119,11 @@ int main(int argc, char const *argv[])
             }else{
                 PlayMove();
             }
-            GenerateAllLegalMoves();
 
         }else{
             CheckForInput();
-            GenerateAllLegalMoves();
-
         }
+
         BeginDrawing();
         ClearBackground(WHITE);
         DrawRectangle(screenWidth, 0, SIDE_WIDTH, screenHeight, BLACK);
@@ -414,8 +412,10 @@ void DrawPromotionPopup(Texture2D piecesTexture)
         }
         promotingPieceIndex = -1;
         pendingPromotion = PROMOTION_NONE;
+
         gameState.isWhiteTurn=!gameState.isWhiteTurn;
-        GenerateAllLegalMoves();
+        GenerateAllLegalMoves(gameState.isWhiteTurn);
+
     }
 }
 void AddMove(int pieceIndex,Vector2 endPos){
@@ -473,9 +473,7 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX + i) * col_width, startY * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
-                    }
+                    } 
                 }
             }
             for (int i = 1; i < COLS; i++) {
@@ -483,8 +481,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX - i) * col_width, startY * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -493,8 +489,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {startX * col_width, (startY + i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -503,8 +497,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {startX * col_width, (startY - i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -533,8 +525,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX + i) * col_width, (startY + i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -543,8 +533,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX - i) * col_width, (startY - i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -553,8 +541,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX + i) * col_width, (startY - i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -563,8 +549,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX - i) * col_width, (startY + i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -579,8 +563,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX + i) * col_width, startY * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -589,8 +571,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX - i) * col_width, startY * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -599,8 +579,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {startX * col_width, (startY + i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -609,8 +587,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {startX * col_width, (startY - i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -621,8 +597,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX + i) * col_width, (startY + i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -631,8 +605,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX - i) * col_width, (startY - i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -641,8 +613,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX + i) * col_width, (startY - i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -651,8 +621,6 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
                     Vector2 move = {(startX - i) * col_width, (startY + i) * col_height};
                     if (IsValidMove(pieceIndex, move)) {
                         AddMove(pieceIndex, move);
-                    } else {
-                        break;
                     }
                 }
             }
@@ -694,15 +662,20 @@ void GenerateAllLegalMovesForPiece(int pieceIndex) {
             break;
     }
 }
-void GenerateAllLegalMoves(){
+void GenerateAllLegalMoves(bool forWhite){
     currentMovesIndex=-1;
     for (int i = 0; i < pieceCount; i++)
     {
-        if(pieces[i].isWhite==gameState.isWhiteTurn && pieces[i].canDraw){
+        if(pieces[i].isWhite==forWhite && pieces[i].canDraw){
         GenerateAllLegalMovesForPiece(i);
         currentMovesIndex+=pieces[i].moveIndex;
 
         }
+    }
+    if(gameState.isWhiteTurn){
+        printf("[+] Total Moves White for: %d\n",currentMovesIndex+1);
+    }else{
+        printf("[+] Total Moves Black for: %d\n",currentMovesIndex+1);
     }
     
 }
@@ -830,13 +803,11 @@ void PlayMoveOnBoard(Vector2 new_pos){
 
             }
 
-            if(gameState.isWhiteTurn){
-                printf("[+] Total Moves White for: %d\n",currentMovesIndex+1);
-            }else{
-                printf("[+] Total Moves Black for: %d\n",currentMovesIndex+1);
-            }
+           
             if(promotingPieceIndex==-1){
                 gameState.isWhiteTurn=!gameState.isWhiteTurn;
+                GenerateAllLegalMoves(gameState.isWhiteTurn);
+
             }
             
         }
