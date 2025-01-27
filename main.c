@@ -11,7 +11,13 @@ const int screenHeight = 800;
 const int screenWidth = 800;
 const int col_width = screenWidth / COLS;
 const int col_height = screenHeight / ROWS;
-
+typedef struct
+{
+    Vector2 startPos;
+    Vector2 endPos;
+    char pieceType;
+    bool pieceisWhite;
+} Move;
 typedef struct
 {
     char type;
@@ -20,14 +26,16 @@ typedef struct
     bool isWhite;
     bool canDraw;
     bool hasMoved;
+    Move moves[27];
+    int moveIndex;
 } Piece;
 typedef struct
 {
-    Vector2 startPos;
-    Vector2 endPos;
-    char pieceType;
-    bool pieceisWhite;
-} Move;
+    bool isWhiteTurn;
+    bool playingWithComputer;
+    char state;
+}GameState;
+
 typedef enum
 {
     PROMOTION_NONE,
@@ -38,136 +46,54 @@ typedef enum
 } PromotionChoice;
 
 PromotionChoice pendingPromotion = PROMOTION_NONE;
+Move moves[256]={0};
 Move lastMove = {0};
+GameState gameState = {0};
 Piece pieces[ROWS * COLS] = {0};
 int pieceCount = 0;
 int lastSelectedPiece = -1;
 int promotingPieceIndex = -1;
+int currentMovesIndex=-1;
 
-bool IsValidMove(int pieceIndex, Vector2 newPos);
-bool IsSquareUnderAttack(Vector2 square, bool isWhite);
+Sound moveSound;
+Sound captureSound;
+Sound checkSound;
+
+void AddMove(int pieceIndex,Vector2 endPos);
+void GenerateAllLegalMovesForPiece(int pieceIndex);
+void GenerateAllLegalMoves();
 void DrawBoard();
 void DrawPieces(Texture2D piecesTexture);
 void SetupPiecesFromFEN(const char *fen);
 void HighlightLegalMoves(int pieceIndex);
-bool IsVector2Equal(Vector2 a, Vector2 b);
 void UpdateLastMove(int pieceIndex, Vector2 newPos);
 void HandleEnPassant(int pieceIndex, Vector2 newPos);
+void DrawPromotionPopup(Texture2D piecesTexture);
+void CheckForInput();
+void PlayMove();
+void PlayMoveOnBoard(Vector2 new_pos);
+void HighlightPreviousMove();
 Vector2 FindKingPosition(bool isWhite);
+
 bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos);
 bool IsKingInCheck(bool isWhite);
 bool IsValidMove(int pieceIndex, Vector2 newPos);
 bool IsSquareUnderAttack(Vector2 square, bool isWhite);
 bool IsCheckMate(bool isWhite);
-bool IsPromotionSquare(Vector2 pos, bool isWhite)
-{
-    return (isWhite && pos.y == 0) || (!isWhite && pos.y == screenHeight - col_height);
-}
-void DrawPromotionPopup(Texture2D piecesTexture)
-{
-    if (promotingPieceIndex == -1)
-        return;
-
-    DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, 0.5f));
-
-    Rectangle popupRect = {
-        screenWidth / 2 - 200,
-        screenHeight / 2 - 100,
-        400,
-        200};
-    DrawRectangleRec(popupRect, LIGHTGRAY);
-
-    
-    DrawText("Promote Pawn To:", popupRect.x + 20, popupRect.y + 10, 20, DARKGRAY);
-
-    
-    float pieceSize = 80;
-    float spacing = 20;
-    float startX = popupRect.x + (popupRect.width - (4 * pieceSize + 3 * spacing)) / 2;
-    float y = popupRect.y + 50;
-
-    
-    Rectangle queenRect = {startX, y, pieceSize, pieceSize};
-    DrawTexturePro(piecesTexture,
-                   (Rectangle){1.0f * piecesTexture.width / 6, pieces[promotingPieceIndex].isWhite ? 0 : piecesTexture.height / 2,
-                               (float)piecesTexture.width / 6, (float)piecesTexture.height / 2},
-                   queenRect, (Vector2){0}, 0, WHITE);
-
-    
-    Rectangle rookRect = {startX + pieceSize + spacing, y, pieceSize, pieceSize};
-    DrawTexturePro(piecesTexture,
-                   (Rectangle){4.0f * piecesTexture.width / 6, pieces[promotingPieceIndex].isWhite ? 0 : piecesTexture.height / 2,
-                               (float)piecesTexture.width / 6, (float)piecesTexture.height / 2},
-                   rookRect, (Vector2){0}, 0, WHITE);
-
-    
-    Rectangle bishopRect = {startX + 2 * (pieceSize + spacing), y, pieceSize, pieceSize};
-    DrawTexturePro(piecesTexture,
-                   (Rectangle){2.0f * piecesTexture.width / 6, pieces[promotingPieceIndex].isWhite ? 0 : piecesTexture.height / 2,
-                               (float)piecesTexture.width / 6, (float)piecesTexture.height / 2},
-                   bishopRect, (Vector2){0}, 0, WHITE);
-
-    
-    Rectangle knightRect = {startX + 3 * (pieceSize + spacing), y, pieceSize, pieceSize};
-    DrawTexturePro(piecesTexture,
-                   (Rectangle){3.0f * piecesTexture.width / 6, pieces[promotingPieceIndex].isWhite ? 0 : piecesTexture.height / 2,
-                               (float)piecesTexture.width / 6, (float)piecesTexture.height / 2},
-                   knightRect, (Vector2){0}, 0, WHITE);
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    {
-        if (CheckCollisionPointRec(GetMousePosition(), queenRect))
-        {
-            DrawRectangleLinesEx(queenRect, 2, YELLOW);
-            pendingPromotion = PROMOTION_QUEEN;
-        }
-        if (CheckCollisionPointRec(GetMousePosition(), rookRect))
-        {
-            DrawRectangleLinesEx(rookRect, 2, YELLOW);
-                pendingPromotion = PROMOTION_ROOK;
-        }
-        if (CheckCollisionPointRec(GetMousePosition(), bishopRect))
-        {
-            DrawRectangleLinesEx(bishopRect, 2, YELLOW);
-                pendingPromotion = PROMOTION_BISHOP;
-        }
-        if (CheckCollisionPointRec(GetMousePosition(), knightRect))
-        {
-            DrawRectangleLinesEx(knightRect, 2, YELLOW);
-                pendingPromotion = PROMOTION_KNIGHT;
-        }
-    }
-    
-    if (pendingPromotion != PROMOTION_NONE)
-    {
-        switch (pendingPromotion)
-        {
-        case PROMOTION_QUEEN:
-            pieces[promotingPieceIndex].type = 'Q';
-            break;
-        case PROMOTION_ROOK:
-            pieces[promotingPieceIndex].type = 'R';
-            break;
-        case PROMOTION_BISHOP:
-            pieces[promotingPieceIndex].type = 'B';
-            break;
-        case PROMOTION_KNIGHT:
-            pieces[promotingPieceIndex].type = 'N';
-            break;
-        default:
-            break;
-        }
-        promotingPieceIndex = -1;
-        pendingPromotion = PROMOTION_NONE;
-    }
-}
+bool IsStaleMate(bool isWhite);
+bool IsPromotionSquare(Vector2 pos, bool isWhite);
+bool IsVector2Equal(Vector2 a, Vector2 b);
+bool IsValidMove(int pieceIndex, Vector2 newPos);
+bool IsSquareUnderAttack(Vector2 square, bool isWhite);
+bool IsLegalMove(int pieceIndex, Vector2 newPos);
 int main(int argc, char const *argv[])
 {
     const char *title = "Chess with FEN";
     InitWindow(screenWidth + SIDE_WIDTH, screenHeight, title);
     InitAudioDevice();
-    Sound moveSound = LoadSound("./resources/move.mp3");
-    Sound captureSound = LoadSound("./resources/capture.mp3");
-    Sound checkSound = LoadSound("./resources/check.mp3");
+    moveSound = LoadSound("./resources/move.mp3");
+    captureSound = LoadSound("./resources/capture.mp3");
+    checkSound = LoadSound("./resources/check.mp3");
     Texture2D piecesTexture = LoadTexture("./resources/chess-pieces.png");
     SetTextureFilter(piecesTexture, TEXTURE_FILTER_BILINEAR);
     char fen[100];
@@ -181,140 +107,36 @@ int main(int argc, char const *argv[])
     }
     char *token = strtok(fen, " ");
     SetupPiecesFromFEN(token);
-
-    bool isWhiteTurn = strtok(NULL, " ")[0] == 'w';
-
+    gameState.playingWithComputer=false;
+    gameState.isWhiteTurn = strtok(NULL, " ")[0] == 'w';
+    GenerateAllLegalMoves();
     SetTargetFPS(144);
-
     while (!WindowShouldClose())
-    {
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-        {
-            Vector2 mousePos = GetMousePosition();
-            for (int i = 0; i < pieceCount; i++)
-            {
-                Rectangle pieceRect = {pieces[i].pos.x, pieces[i].pos.y, col_width, col_height};
-
-                if (CheckCollisionPointRec(mousePos, pieceRect) && pieces[i].canDraw)
-                {
-                    if (pieces[i].isWhite != isWhiteTurn)
-                    {
-                        break;
-                    }
-                    pieces[i].isDragging = true;
-                    lastSelectedPiece = i;
-
-                    break;
-                }
+    {   
+        if(gameState.playingWithComputer &&!(gameState.state&0)){
+            if(gameState.isWhiteTurn){
+                CheckForInput();
+            }else{
+                PlayMove();
             }
+            GenerateAllLegalMoves();
+
+        }else{
+            CheckForInput();
+            GenerateAllLegalMoves();
+
         }
-
-        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-        {
-            if (lastSelectedPiece != -1)
-            {
-                if (pieces[lastSelectedPiece].isDragging)
-                {
-                    Vector2 mousePos = GetMousePosition();
-                    int col = (int)(mousePos.x / col_width);
-                    int row = (int)(mousePos.y / col_height);
-                    Vector2 new_pos = (Vector2){col * col_width, row * col_height};
-
-                    if (IsValidMove(lastSelectedPiece, new_pos))
-                    {
-                        bool canMove = true;
-                        bool isCapture = false;
-
-                        for (int i = 0; i < pieceCount; i++)
-                        {
-                            if (!pieces[i].canDraw || i == lastSelectedPiece)
-                            {
-                                continue;
-                            }
-                            if (pieces[i].pos.x == new_pos.x && pieces[i].pos.y == new_pos.y)
-                            {
-                                if (pieces[lastSelectedPiece].isWhite == pieces[i].isWhite || pieces[i].type == 'K')
-                                {
-                                    canMove = false;
-                                    break;
-                                }
-                                else
-                                {
-                                    pieces[i].canDraw = false;
-                                    isCapture = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (canMove)
-                        {
-                            if (pieces[lastSelectedPiece].type == 'K' && abs((new_pos.x - pieces[lastSelectedPiece].pos.x) / col_width) == 2)
-                            {
-                                int direction = (new_pos.x > pieces[lastSelectedPiece].pos.x) ? 1 : -1;
-                                Vector2 rookNewPos = {new_pos.x - direction * col_width, new_pos.y};
-
-                                for (int i = 0; i < pieceCount; i++)
-                                {
-                                    if (pieces[i].type == 'R' && pieces[i].pos.y == new_pos.y)
-                                    {
-                                        if ((direction == 1 && pieces[i].pos.x == 7 * col_width) ||
-                                            (direction == -1 && pieces[i].pos.x == 0 * col_width))
-                                        {
-                                            pieces[i].pos = rookNewPos;
-                                            pieces[i].hasMoved = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            HandleEnPassant(lastSelectedPiece, new_pos);
-
-                            UpdateLastMove(lastSelectedPiece, new_pos);
-                            if (pieces[lastSelectedPiece].pos.x != new_pos.x || pieces[lastSelectedPiece].pos.y != new_pos.y)
-                            {
-                                pieces[lastSelectedPiece].hasMoved = true;
-                            }
-                            pieces[lastSelectedPiece].pos = new_pos;
-                            if (IsKingInCheck(!pieces[lastSelectedPiece].isWhite))
-                            {
-                                PlaySound(checkSound);
-                            }
-                            else if (isCapture)
-                            {
-                                PlaySound(captureSound);
-                            }
-                            else
-                            {
-                                PlaySound(moveSound);
-                            }
-                            if (pieces[lastSelectedPiece].type == 'P' && IsPromotionSquare(new_pos, pieces[lastSelectedPiece].isWhite))
-                            {
-                                promotingPieceIndex = lastSelectedPiece;
-                            }
-
-                            isWhiteTurn = !isWhiteTurn;
-                        }
-                    }
-                    pieces[lastSelectedPiece].isDragging = false;
-                }
-                lastSelectedPiece = -1;
-            }
-        }
-
         BeginDrawing();
         ClearBackground(WHITE);
         DrawRectangle(screenWidth, 0, SIDE_WIDTH, screenHeight, BLACK);
 
         DrawBoard();
-        if (promotingPieceIndex != -1)
-        {
-            DrawPromotionPopup(piecesTexture);
-        }
+        
         if (lastSelectedPiece != -1)
         {
             HighlightLegalMoves(lastSelectedPiece);
         }
-        if (isWhiteTurn)
+        if (gameState.isWhiteTurn)
         {
             DrawText("White Turn", screenWidth + SIDE_WIDTH / 4, 200, 24, WHITE);
         }
@@ -333,10 +155,19 @@ int main(int argc, char const *argv[])
             char result[100];
             sprintf(result, "GAME OVER\n%s Won by Checkmate", winner);
             DrawText(result, screenWidth + (SIDE_WIDTH / 8), SIDE_WIDTH, 24, WHITE);
+        }else if(IsStaleMate(!lastMove.pieceisWhite)){
+            DrawText("Draw", screenWidth + (SIDE_WIDTH / 8), SIDE_WIDTH, 24, WHITE);
         }
+      
+            HighlightPreviousMove();
+        
         DrawPieces(piecesTexture);
-
+        if (promotingPieceIndex != -1)
+        {
+            DrawPromotionPopup(piecesTexture);
+        }
         EndDrawing();
+        
     }
 
     UnloadTexture(piecesTexture);
@@ -439,6 +270,8 @@ void SetupPiecesFromFEN(const char *fen)
             pieces[pieceCount].isDragging = false;
             pieces[pieceCount].isWhite = c < 96;
             pieces[pieceCount].canDraw = true;
+            pieces[pieceCount].moveIndex = 0;
+
             pieces[pieceCount].hasMoved = false;
             pieceCount++;
             col++;
@@ -447,188 +280,13 @@ void SetupPiecesFromFEN(const char *fen)
 }
 void HighlightLegalMoves(int pieceIndex)
 {
-    Piece piece = pieces[pieceIndex];
-    int startX = (int)(piece.pos.x / col_width);
-    int startY = (int)(piece.pos.y / col_height);
+     Piece piece= pieces[pieceIndex];
+    for(int i=0;i<piece.moveIndex;i++){
+        if(piece.canDraw){
+            
+            DrawRectangle(piece.moves[i].endPos.x,piece.moves[i].endPos.y, col_width, col_height, Fade(GREEN, 0.5f));
 
-    switch (piece.type)
-    {
-
-    case 'P':
-        if (piece.isWhite)
-        {
-            if (IsValidMove(pieceIndex, (Vector2){startX * col_width, (startY - 1) * col_height}))
-            {
-                DrawRectangle(startX * col_width, (startY - 1) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-
-            if (IsValidMove(pieceIndex, (Vector2){startX * col_width, (startY - 2) * col_height}))
-            {
-                DrawRectangle(startX * col_width, (startY - 2) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-
-            if (startX > 0 && IsValidMove(pieceIndex, (Vector2){(startX - 1) * col_width, (startY - 1) * col_height}))
-            {
-                DrawRectangle((startX - 1) * col_width, (startY - 1) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX < COLS - 1 && IsValidMove(pieceIndex, (Vector2){(startX + 1) * col_width, (startY - 1) * col_height}))
-            {
-                DrawRectangle((startX + 1) * col_width, (startY - 1) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            break;
         }
-        else
-        {
-            if (IsValidMove(pieceIndex, (Vector2){startX * col_width, (startY + 1) * col_height}))
-            {
-                DrawRectangle(startX * col_width, (startY + 1) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startY == 1 && IsValidMove(pieceIndex, (Vector2){startX * col_width, (startY + 2) * col_height}))
-            {
-                DrawRectangle(startX * col_width, (startY + 2) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-
-            if (startX > 0 && IsValidMove(pieceIndex, (Vector2){(startX - 1) * col_width, (startY + 1) * col_height}))
-            {
-                DrawRectangle((startX - 1) * col_width, (startY + 1) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX < COLS - 1 && IsValidMove(pieceIndex, (Vector2){(startX + 1) * col_width, (startY + 1) * col_height}))
-            {
-                DrawRectangle((startX + 1) * col_width, (startY + 1) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            break;
-        }
-
-    case 'R':
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS && IsValidMove(pieceIndex, (Vector2){(startX + i) * col_width, startY * col_height}))
-            {
-                DrawRectangle((startX + i) * col_width, startY * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX - i >= 0 && IsValidMove(pieceIndex, (Vector2){(startX - i) * col_width, startY * col_height}))
-            {
-                DrawRectangle((startX - i) * col_width, startY * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startY + i < ROWS && IsValidMove(pieceIndex, (Vector2){startX * col_width, (startY + i) * col_height}))
-            {
-                DrawRectangle(startX * col_width, (startY + i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startY - i >= 0 && IsValidMove(pieceIndex, (Vector2){startX * col_width, (startY - i) * col_height}))
-            {
-                DrawRectangle(startX * col_width, (startY - i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-        }
-        break;
-
-    case 'N':
-        int knightMoves[8][2] = {{2, 1}, {2, -1}, {-2, 1}, {-2, -1}, {1, 2}, {1, -2}, {-1, 2}, {-1, -2}};
-        for (int i = 0; i < 8; i++)
-        {
-            int x = startX + knightMoves[i][0];
-            int y = startY + knightMoves[i][1];
-            if (x >= 0 && x < COLS && y >= 0 && y < ROWS && IsValidMove(pieceIndex, (Vector2){x * col_width, y * col_height}))
-            {
-                DrawRectangle(x * col_width, y * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-        }
-        break;
-
-    case 'B':
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS && startY + i < ROWS && IsValidMove(pieceIndex, (Vector2){(startX + i) * col_width, (startY + i) * col_height}))
-            {
-                DrawRectangle((startX + i) * col_width, (startY + i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX - i >= 0 && startY - i >= 0 && IsValidMove(pieceIndex, (Vector2){(startX - i) * col_width, (startY - i) * col_height}))
-            {
-                DrawRectangle((startX - i) * col_width, (startY - i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX + i < COLS && startY - i >= 0 && IsValidMove(pieceIndex, (Vector2){(startX + i) * col_width, (startY - i) * col_height}))
-            {
-                DrawRectangle((startX + i) * col_width, (startY - i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX - i >= 0 && startY + i < ROWS && IsValidMove(pieceIndex, (Vector2){(startX - i) * col_width, (startY + i) * col_height}))
-            {
-                DrawRectangle((startX - i) * col_width, (startY + i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-        }
-        break;
-
-    case 'Q':
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS && IsValidMove(pieceIndex, (Vector2){(startX + i) * col_width, startY * col_height}))
-            {
-                DrawRectangle((startX + i) * col_width, startY * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX - i >= 0 && IsValidMove(pieceIndex, (Vector2){(startX - i) * col_width, startY * col_height}))
-            {
-                DrawRectangle((startX - i) * col_width, startY * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startY + i < ROWS && IsValidMove(pieceIndex, (Vector2){startX * col_width, (startY + i) * col_height}))
-            {
-                DrawRectangle(startX * col_width, (startY + i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startY - i >= 0 && IsValidMove(pieceIndex, (Vector2){startX * col_width, (startY - i) * col_height}))
-            {
-                DrawRectangle(startX * col_width, (startY - i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX + i < COLS && startY + i < ROWS && IsValidMove(pieceIndex, (Vector2){(startX + i) * col_width, (startY + i) * col_height}))
-            {
-                DrawRectangle((startX + i) * col_width, (startY + i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX - i >= 0 && startY - i >= 0 && IsValidMove(pieceIndex, (Vector2){(startX - i) * col_width, (startY - i) * col_height}))
-            {
-                DrawRectangle((startX - i) * col_width, (startY - i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX + i < COLS && startY - i >= 0 && IsValidMove(pieceIndex, (Vector2){(startX + i) * col_width, (startY - i) * col_height}))
-            {
-                DrawRectangle((startX + i) * col_width, (startY - i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-            if (startX - i >= 0 && startY + i < ROWS && IsValidMove(pieceIndex, (Vector2){(startX - i) * col_width, (startY + i) * col_height}))
-            {
-                DrawRectangle((startX - i) * col_width, (startY + i) * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-            }
-        }
-        break;
-
-    case 'K':
-        for (int i = -1; i <= 1; i++)
-        {
-            for (int j = -1; j <= 1; j++)
-            {
-                if (i == 0 && j == 0)
-                    continue;
-                int x = startX + i;
-                int y = startY + j;
-                if (x >= 0 && x < COLS && y >= 0 && y < ROWS && IsValidMove(pieceIndex, (Vector2){x * col_width, y * col_height}))
-                {
-                    DrawRectangle(x * col_width, y * col_height, col_width, col_height, Fade(GREEN, 0.5f));
-                }
-            }
-        }
-        if (!piece.hasMoved)
-        {
-
-            Vector2 kingsidePos = {(startX + 2) * col_width, startY * col_height};
-            if (IsValidMove(pieceIndex, kingsidePos))
-            {
-                DrawRectangle(kingsidePos.x, kingsidePos.y,
-                              col_width, col_height, Fade(GREEN, 0.5f));
-            }
-
-            Vector2 queensidePos = {(startX - 2) * col_width, startY * col_height};
-            if (IsValidMove(pieceIndex, queensidePos))
-            {
-                DrawRectangle(queensidePos.x, queensidePos.y,
-                              col_width, col_height, Fade(GREEN, 0.5f));
-            }
-        }
-
-    default:
-        break;
     }
 }
 void UpdateLastMove(int pieceIndex, Vector2 newPos)
@@ -659,7 +317,576 @@ void HandleEnPassant(int pieceIndex, Vector2 newPos)
         }
     }
 }
+void DrawPromotionPopup(Texture2D piecesTexture)
+{
+    if (promotingPieceIndex == -1)
+        return;
+    if(!gameState.playingWithComputer||gameState.isWhiteTurn){
+        DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, 0.5f));
 
+        Rectangle popupRect = {
+            screenWidth / 2 - 200,
+            screenHeight / 2 - 100,
+            400,
+            200};
+        DrawRectangleRec(popupRect, LIGHTGRAY);
+
+        
+        DrawText("Promote Pawn To:", popupRect.x + 20, popupRect.y + 10, 20, DARKGRAY);
+
+        
+        float pieceSize = 80;
+        float spacing = 20;
+        float startX = popupRect.x + (popupRect.width - (4 * pieceSize + 3 * spacing)) / 2;
+        float y = popupRect.y + 50;
+
+        Rectangle queenRect = {startX, y, pieceSize, pieceSize};
+        DrawTexturePro(piecesTexture,
+                    (Rectangle){1.0f * piecesTexture.width / 6, pieces[promotingPieceIndex].isWhite ? 0 : piecesTexture.height / 2,
+                                (float)piecesTexture.width / 6, (float)piecesTexture.height / 2},
+                    queenRect, (Vector2){0}, 0, WHITE);
+
+        
+        Rectangle rookRect = {startX + pieceSize + spacing, y, pieceSize, pieceSize};
+        DrawTexturePro(piecesTexture,
+                    (Rectangle){4.0f * piecesTexture.width / 6, pieces[promotingPieceIndex].isWhite ? 0 : piecesTexture.height / 2,
+                                (float)piecesTexture.width / 6, (float)piecesTexture.height / 2},
+                    rookRect, (Vector2){0}, 0, WHITE);
+
+        
+        Rectangle bishopRect = {startX + 2 * (pieceSize + spacing), y, pieceSize, pieceSize};
+        DrawTexturePro(piecesTexture,
+                    (Rectangle){2.0f * piecesTexture.width / 6, pieces[promotingPieceIndex].isWhite ? 0 : piecesTexture.height / 2,
+                                (float)piecesTexture.width / 6, (float)piecesTexture.height / 2},
+                    bishopRect, (Vector2){0}, 0, WHITE);
+
+        
+        Rectangle knightRect = {startX + 3 * (pieceSize + spacing), y, pieceSize, pieceSize};
+        DrawTexturePro(piecesTexture,
+                    (Rectangle){3.0f * piecesTexture.width / 6, pieces[promotingPieceIndex].isWhite ? 0 : piecesTexture.height / 2,
+                                (float)piecesTexture.width / 6, (float)piecesTexture.height / 2},
+                    knightRect, (Vector2){0}, 0, WHITE);
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            if (CheckCollisionPointRec(GetMousePosition(), queenRect))
+            {
+                DrawRectangleLinesEx(queenRect, 2, YELLOW);
+                pendingPromotion = PROMOTION_QUEEN;
+            }
+            if (CheckCollisionPointRec(GetMousePosition(), rookRect))
+            {
+                DrawRectangleLinesEx(rookRect, 2, YELLOW);
+                    pendingPromotion = PROMOTION_ROOK;
+            }
+            if (CheckCollisionPointRec(GetMousePosition(), bishopRect))
+            {
+                DrawRectangleLinesEx(bishopRect, 2, YELLOW);
+                    pendingPromotion = PROMOTION_BISHOP;
+            }
+            if (CheckCollisionPointRec(GetMousePosition(), knightRect))
+            {
+                DrawRectangleLinesEx(knightRect, 2, YELLOW);
+                    pendingPromotion = PROMOTION_KNIGHT;
+            }
+        }
+    }else{
+        pendingPromotion=PROMOTION_QUEEN;
+    }
+
+    if (pendingPromotion != PROMOTION_NONE)
+    {
+        switch (pendingPromotion)
+        {
+        case PROMOTION_QUEEN:
+            pieces[promotingPieceIndex].type = 'Q';
+            break;
+        case PROMOTION_ROOK:
+            pieces[promotingPieceIndex].type = 'R';
+            break;
+        case PROMOTION_BISHOP:
+            pieces[promotingPieceIndex].type = 'B';
+            break;
+        case PROMOTION_KNIGHT:
+            pieces[promotingPieceIndex].type = 'N';
+            break;
+        default:
+            break;
+        }
+        promotingPieceIndex = -1;
+        pendingPromotion = PROMOTION_NONE;
+        gameState.isWhiteTurn=!gameState.isWhiteTurn;
+        GenerateAllLegalMoves();
+    }
+}
+void AddMove(int pieceIndex,Vector2 endPos){
+    Piece * piece = &pieces[pieceIndex];
+    Move move;
+    move.startPos=piece->pos;
+    move.endPos=endPos;
+    move.pieceisWhite=piece->isWhite;
+    move.pieceType=piece->type;
+    piece->moves[piece->moveIndex++]=move;
+}
+void GenerateAllLegalMovesForPiece(int pieceIndex) {
+    Piece piece = pieces[pieceIndex];
+    pieces[pieceIndex].moveIndex=0;
+
+    int startX = (int)(piece.pos.x / col_width);
+    int startY = (int)(piece.pos.y / col_height);
+
+    switch (piece.type) {
+        case 'P': {
+            int t_dx = piece.isWhite ? -1 : 1;
+            int t_dx_2 = piece.isWhite ? -2 : 2;
+
+            
+            Vector2 singleMove = {startX * col_width, (startY + t_dx) * col_height};
+            if (IsValidMove(pieceIndex, singleMove)) {
+                AddMove(pieceIndex, singleMove);
+            }
+
+            
+            if ((piece.isWhite && startY == 6) || (!piece.isWhite && startY == 1)) {
+                Vector2 doubleMove = {startX * col_width, (startY + t_dx_2) * col_height};
+                if (IsValidMove(pieceIndex, doubleMove)) {
+                    AddMove(pieceIndex, doubleMove);
+                }
+            }
+
+            
+            Vector2 captureLeft = {(startX - 1) * col_width, (startY + t_dx) * col_height};
+            if (startX > 0 && IsValidMove(pieceIndex, captureLeft)) {
+                AddMove(pieceIndex, captureLeft);
+            }
+
+            Vector2 captureRight = {(startX + 1) * col_width, (startY + t_dx) * col_height};
+            if (startX < COLS - 1 && IsValidMove(pieceIndex, captureRight)) {
+                AddMove(pieceIndex, captureRight);
+            }
+            break;
+        }
+
+        case 'R': {
+            
+            for (int i = 1; i < COLS; i++) {
+                if (startX + i < COLS) {
+                    Vector2 move = {(startX + i) * col_width, startY * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < COLS; i++) {
+                if (startX - i >= 0) {
+                    Vector2 move = {(startX - i) * col_width, startY * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < ROWS; i++) {
+                if (startY + i < ROWS) {
+                    Vector2 move = {startX * col_width, (startY + i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < ROWS; i++) {
+                if (startY - i >= 0) {
+                    Vector2 move = {startX * col_width, (startY - i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+
+        case 'N': {
+            int knightMoves[8][2] = {{2, 1}, {2, -1}, {-2, 1}, {-2, -1}, {1, 2}, {1, -2}, {-1, 2}, {-1, -2}};
+            for (int i = 0; i < 8; i++) {
+                int x = startX + knightMoves[i][0];
+                int y = startY + knightMoves[i][1];
+                if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
+                    Vector2 move = {x * col_width, y * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    }
+                }
+            }
+            break;
+        }
+
+        case 'B': {
+            
+            for (int i = 1; i < COLS; i++) {
+                if (startX + i < COLS && startY + i < ROWS) {
+                    Vector2 move = {(startX + i) * col_width, (startY + i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < COLS; i++) {
+                if (startX - i >= 0 && startY - i >= 0) {
+                    Vector2 move = {(startX - i) * col_width, (startY - i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < COLS; i++) {
+                if (startX + i < COLS && startY - i >= 0) {
+                    Vector2 move = {(startX + i) * col_width, (startY - i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < COLS; i++) {
+                if (startX - i >= 0 && startY + i < ROWS) {
+                    Vector2 move = {(startX - i) * col_width, (startY + i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+
+        case 'Q': {
+            
+            
+            for (int i = 1; i < COLS; i++) {
+                if (startX + i < COLS) {
+                    Vector2 move = {(startX + i) * col_width, startY * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < COLS; i++) {
+                if (startX - i >= 0) {
+                    Vector2 move = {(startX - i) * col_width, startY * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < ROWS; i++) {
+                if (startY + i < ROWS) {
+                    Vector2 move = {startX * col_width, (startY + i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < ROWS; i++) {
+                if (startY - i >= 0) {
+                    Vector2 move = {startX * col_width, (startY - i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            
+            for (int i = 1; i < COLS; i++) {
+                if (startX + i < COLS && startY + i < ROWS) {
+                    Vector2 move = {(startX + i) * col_width, (startY + i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < COLS; i++) {
+                if (startX - i >= 0 && startY - i >= 0) {
+                    Vector2 move = {(startX - i) * col_width, (startY - i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < COLS; i++) {
+                if (startX + i < COLS && startY - i >= 0) {
+                    Vector2 move = {(startX + i) * col_width, (startY - i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 1; i < COLS; i++) {
+                if (startX - i >= 0 && startY + i < ROWS) {
+                    Vector2 move = {(startX - i) * col_width, (startY + i) * col_height};
+                    if (IsValidMove(pieceIndex, move)) {
+                        AddMove(pieceIndex, move);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+
+        case 'K': {
+            
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    if (i == 0 && j == 0) continue;
+                    int x = startX + i;
+                    int y = startY + j;
+                    if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
+                        Vector2 move = {x * col_width, y * col_height};
+                        if (IsValidMove(pieceIndex, move)) {
+                            AddMove(pieceIndex, move);
+                        }
+                    }
+                }
+            }
+
+            
+            if (!piece.hasMoved) {
+                
+                if (IsValidMove(pieceIndex, (Vector2){(startX + 2) * col_width, startY * col_height})) {
+                    AddMove(pieceIndex, (Vector2){(startX + 2) * col_width, startY * col_height});
+                }
+
+                
+                if (IsValidMove(pieceIndex, (Vector2){(startX - 2) * col_width, startY * col_height})) {
+                    AddMove(pieceIndex, (Vector2){(startX - 2) * col_width, startY * col_height});
+                }
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+void GenerateAllLegalMoves(){
+    currentMovesIndex=-1;
+    for (int i = 0; i < pieceCount; i++)
+    {
+        if(pieces[i].isWhite==gameState.isWhiteTurn && pieces[i].canDraw){
+        GenerateAllLegalMovesForPiece(i);
+        currentMovesIndex+=pieces[i].moveIndex;
+
+        }
+    }
+    
+}
+void CheckForInput(){
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            Vector2 mousePos = GetMousePosition();
+            for (int i = 0; i < pieceCount; i++)
+            {
+                Rectangle pieceRect = {pieces[i].pos.x, pieces[i].pos.y, col_width, col_height};
+
+                if (CheckCollisionPointRec(mousePos, pieceRect) && pieces[i].canDraw)
+                {
+                    if (pieces[i].isWhite != gameState.isWhiteTurn)
+                    {
+                        break;
+                    }
+                    pieces[i].isDragging = true;
+                    lastSelectedPiece = i;
+
+                    break;
+                }
+            }
+        }
+
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        {
+            if (lastSelectedPiece != -1)
+            {
+                if (pieces[lastSelectedPiece].isDragging)
+                {
+                    Vector2 mousePos = GetMousePosition();
+                    int col = (int)(mousePos.x / col_width);
+                    int row = (int)(mousePos.y / col_height);
+                    Vector2 new_pos = (Vector2){col * col_width, row * col_height};
+                    PlayMoveOnBoard(new_pos);
+                }
+            }
+        }
+
+}
+void HighlightPreviousMove(){
+    DrawRectangle(lastMove.startPos.x,lastMove.startPos.y, col_width, col_height, Fade((Color){0xb9,0xca,0x42,155}, 0.5f));
+    DrawRectangle(lastMove.endPos.x,lastMove.endPos.y, col_width, col_height, Fade((Color){0xb9,0xca,0x42,155}, 0.5f));
+
+}
+void PlayMoveOnBoard(Vector2 new_pos){
+    if(IsVector2Equal(pieces[lastSelectedPiece].pos,new_pos)){
+        pieces[lastSelectedPiece].isDragging = false;
+        lastSelectedPiece=-1;
+        return; 
+
+
+    }
+    if (IsLegalMove(lastSelectedPiece, new_pos))
+    {
+        bool canMove = true;
+        bool isCapture = false;
+
+        for (int i = 0; i < pieceCount; i++)
+        {
+            if (!pieces[i].canDraw || i == lastSelectedPiece)
+            {
+                continue;
+            }
+            if (pieces[i].pos.x == new_pos.x && pieces[i].pos.y == new_pos.y)
+            {
+                if (pieces[lastSelectedPiece].isWhite == pieces[i].isWhite || pieces[i].type == 'K')
+                {
+                    canMove = false;
+                    break;
+                }
+                else
+                {
+                    pieces[i].canDraw = false;
+                    isCapture = true;
+                    break;
+                }
+            }
+        }
+        if (canMove)
+        {
+            if (pieces[lastSelectedPiece].type == 'K' && abs((new_pos.x - pieces[lastSelectedPiece].pos.x) / col_width) == 2)
+            {
+                int direction = (new_pos.x > pieces[lastSelectedPiece].pos.x) ? 1 : -1;
+                Vector2 rookNewPos = {new_pos.x - direction * col_width, new_pos.y};
+
+                for (int i = 0; i < pieceCount; i++)
+                {
+                    if (pieces[i].type == 'R' && pieces[i].pos.y == new_pos.y)
+                    {
+                        if ((direction == 1 && pieces[i].pos.x == 7 * col_width) ||
+                            (direction == -1 && pieces[i].pos.x == 0 * col_width))
+                        {
+                            pieces[i].pos = rookNewPos;
+                            pieces[i].hasMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            HandleEnPassant(lastSelectedPiece, new_pos);
+
+            UpdateLastMove(lastSelectedPiece, new_pos);
+            if (pieces[lastSelectedPiece].pos.x != new_pos.x || pieces[lastSelectedPiece].pos.y != new_pos.y)
+            {
+                pieces[lastSelectedPiece].hasMoved = true;
+            }
+            pieces[lastSelectedPiece].pos = new_pos;
+            if (IsKingInCheck(!pieces[lastSelectedPiece].isWhite))
+            {
+                PlaySound(checkSound);
+            }
+            else if (isCapture)
+            {
+                PlaySound(captureSound);
+            }
+            else
+            {
+                PlaySound(moveSound);
+            }
+            if (pieces[lastSelectedPiece].type == 'P' && IsPromotionSquare(new_pos, pieces[lastSelectedPiece].isWhite))
+            {
+                promotingPieceIndex = lastSelectedPiece;
+
+            }
+
+            if(gameState.isWhiteTurn){
+                printf("[+] Total Moves White for: %d\n",currentMovesIndex+1);
+            }else{
+                printf("[+] Total Moves Black for: %d\n",currentMovesIndex+1);
+            }
+            if(promotingPieceIndex==-1){
+                gameState.isWhiteTurn=!gameState.isWhiteTurn;
+            }
+            
+        }
+
+    }
+    pieces[lastSelectedPiece].isDragging = false;
+    lastSelectedPiece=-1; 
+    
+
+
+}
+void PlayMove(){
+    Piece blackPieces[32]={0};
+    int indices[32]={0};
+    int k=0;
+    for (int i = 0; i < pieceCount; i++)
+    {
+        if(!pieces[i].isWhite && pieces[i].canDraw && pieces[i].moveIndex){
+            blackPieces[k]=pieces[i];
+            indices[k]=i;
+            k++;
+        }
+    }
+    if(k==0){
+        
+         return;
+    }
+    int randomPieceIndex=rand()%k;
+    Piece piece=blackPieces[randomPieceIndex];
+    lastSelectedPiece=indices[randomPieceIndex];
+    int indx=rand()%piece.moveIndex;
+    Vector2 new_pos=piece.moves[indx].endPos;
+    PlayMoveOnBoard(new_pos);
+    
+    
+}
+bool IsLegalMove(int pieceIndex,Vector2 new_pos){
+    Piece piece=pieces[pieceIndex];
+    for (int i = 0; i < piece.moveIndex; i++)
+    {
+       if(IsVector2Equal(piece.moves[i].endPos,new_pos)){
+            return true;
+       }
+    }
+    return false;
+    
+}
+bool IsPieceInValidOrSame(int p1,int p2){
+    return p1==p2||pieces[p1].canDraw||pieces[p1].isWhite==pieces[p2].isWhite;
+}
 bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos)
 {
     Piece piece = pieces[pieceIndex];
@@ -731,9 +958,9 @@ bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos)
                 {
                     if (i == pieceIndex || !pieces[i].canDraw)
                         continue;
-                    if (IsVector2Equal(pieces[i].pos, newPos) && !pieces[i].isWhite)
+                    if (IsVector2Equal(pieces[i].pos, newPos))
                     {
-                        return true;
+                        return !pieces[i].isWhite;
                     }
                 }
 
@@ -774,7 +1001,7 @@ bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos)
                     {
                         if (i == pieceIndex || !pieces[i].canDraw)
                             continue;
-                        if (IsVector2Equal(pieces[i].pos, newPos))
+                        if (pieces[i].pos.x == newPos.x && (pieces[i].pos.y == newPos.y || pieces[i].pos.y == newPos.y + col_height))
                         {
 
                             return false;
@@ -790,13 +1017,13 @@ bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos)
                 {
                     if (i == pieceIndex || !pieces[i].canDraw)
                         continue;
-                    if (IsVector2Equal(pieces[i].pos, newPos) && pieces[i].isWhite)
+                    if (IsVector2Equal(pieces[i].pos, newPos) )
                     {
-                        return true;
+                        return !pieces[i].isWhite;
                     }
                 }
 
-                if (lastMove.pieceType == 'P' && lastMove.endPos.y == piece.pos.y &&
+                if (lastMove.pieceType == 'P' && lastMove.endPos.y == piece.pos.y &&lastMove.pieceisWhite!=piece.isWhite &&
                     abs((lastMove.endPos.x - piece.pos.x) / col_width) == 1 &&
                     (lastMove.endPos.y - lastMove.startPos.y) / col_height == -2)
                 {
@@ -1054,8 +1281,7 @@ bool IsValidMove(int pieceIndex, Vector2 newPos)
     for (int i = 0; i < pieceCount; i++)
     {
         if (i != pieceIndex && pieces[i].canDraw &&
-            pieces[i].pos.x == newPos.x &&
-            pieces[i].pos.y == newPos.y)
+           IsVector2Equal(pieces[i].pos,newPos))
         {
             capturedIndex = i;
             capturedCanDraw = pieces[i].canDraw;
@@ -1119,6 +1345,46 @@ bool IsCheckMate(bool isWhite)
             }
         }
     }
+
+    if(isWhite){
+        gameState.state=1<<2;
+    }else{
+        gameState.state=1<<1;
+
+    }
+    gameState.state|=1;
+    return true;
+}
+bool IsPromotionSquare(Vector2 pos, bool isWhite)
+{
+    return (isWhite && pos.y == 0) || (!isWhite && pos.y == screenHeight - col_height);
+}
+bool IsStaleMate(bool isWhite)
+{
+    bool isCheck = IsKingInCheck(isWhite);
+    if (isCheck)
+    {
+        return false;
+    }
+    for (int i = 0; i < pieceCount; i++)
+    {
+        if (pieces[i].isWhite == isWhite && pieces[i].canDraw)
+        {
+            for (int x = 0; x < COLS; x++)
+            {
+                for (int y = 0; y < ROWS; y++)
+                {
+                    Vector2 newPos = {x * col_width, y * col_height};
+                    if (IsValidMove(i, newPos))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    gameState.state=1<<3;
+    gameState.state|=1;
     return true;
 }
 
