@@ -21,6 +21,8 @@ typedef struct
     Vector2 endPos;
     char pieceType;
     bool pieceisWhite;
+    bool isCapture;
+    bool isCheck;
 } Move;
 typedef struct {
     int promoteTo;
@@ -63,6 +65,56 @@ typedef enum
     PROMOTION_BISHOP,
     PROMOTION_KNIGHT
 } PromotionChoice;
+int pawnEval[8][8] = {
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {50, 50, 50, 50, 50, 50, 50, 50},
+    {10, 10, 20, 30, 30, 20, 10, 10},
+    {5, 5, 10, 25, 25, 10, 5, 5},
+    {0, 0, 0, 20, 20, 0, 0, 0},
+    {5, -5, -10, 0, 0, -10, -5, 5},
+    {5, 10, 10, -20, -20, 10, 10, 5},
+    {0, 0, 0, 0, 0, 0, 0, 0}
+};
+int knightEval[8][8] = {
+{-50,-40,-30,-30,-30,-30,-40,-50,},
+{-40,-20,  0,  0,  0,  0,-20,-40,},
+{-30,  0, 10, 15, 15, 10,  0,-30,},
+{-30,  5, 15, 20, 20, 15,  5,-30,},
+{-30,  0, 15, 20, 20, 15,  0,-30,},
+{-30,  5, 10, 15, 15, 10,  5,-30,},
+{-40,-20,  0,  5,  5,  0,-20,-40,},
+{-50,-40,-30,-30,-30,-30,-40,-50,},
+};
+int bishopEval[8][8] = {
+-20,-10,-10,-10,-10,-10,-10,-20,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-10,  0,  5, 10, 10,  5,  0,-10,
+-10,  5,  5, 10, 10,  5,  5,-10,
+-10,  0, 10, 10, 10, 10,  0,-10,
+-10, 10, 10, 10, 10, 10, 10,-10,
+-10,  5,  0,  0,  0,  0,  5,-10,
+-20,-10,-10,-10,-10,-10,-10,-20,
+};
+int rookEval[8][8] = {
+ 0,  0,  0,  0,  0,  0,  0,  0,
+  5, 10, 10, 10, 10, 10, 10,  5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+  0,  0,  0,  5,  5,  0,  0,  0
+};
+int queenEval[8][8] = {
+-20,-10,-10, -5, -5,-10,-10,-20,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-10,  0,  5,  5,  5,  5,  0,-10,
+ -5,  0,  5,  5,  5,  5,  0, -5,
+  0,  0,  5,  5,  5,  5,  0, -5,
+-10,  5,  5,  5,  5,  5,  0,-10,
+-10,  0,  5,  0,  0,  0,  0,-10,
+-20,-10,-10, -5, -5,-10,-10,-20
+};
 
 static PromotionChoice pendingPromotion = PROMOTION_NONE;
 static Move lastMove = {0};
@@ -90,7 +142,7 @@ void CheckForInput();
 void PlayMove(bool withWhite);
 void PlayMoveOnBoard(Vector2 new_pos);
 void HighlightPreviousMove();
-
+void SortMovesByPriority(Piece *piece);
 
 bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos);
 bool IsKingInCheck(bool isWhite);
@@ -106,18 +158,21 @@ bool IsLegalMove(int pieceIndex, Vector2 newPos);
 bool IsSquareOccupied(Vector2 pos);
 bool IsIsolatedPawn(int pawnIndex);
 bool IsBlockedPawn(int pawnIndex);
-
+bool IsCapture(Vector2 square, bool isWhite);
 
 
 int CalulatePossiblePosition(int depth,bool isWhiteTurn);
 int HasDoubledPawns(bool isWhite);
+int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer);
+int Eval();   
+int IterativeDeepening(int maxDepth, int alpha, int beta, bool isMaximizingPlayer, double timeLimitInSeconds);
+int GetMovePriority(Move *move);
 Vector2 FindKingPosition(bool isWhite);
 
-int Eval();   
-int Minimax(int depth, bool isMaximizingPlayer);
 
 void UndoMove(MoveState state);
 void ApplyPromotion(MoveState *state);
+
+
 MoveState ApplyMove(int pieceIndex, Vector2 newPos);
-int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer);
 #endif

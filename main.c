@@ -1,6 +1,5 @@
 #include "main.h"
 static Piece pieces[ROWS * COLS] = {0};
-
 int main(int argc, char const *argv[])
 {
     char fen[100];
@@ -364,7 +363,126 @@ void AddMove(int pieceIndex, Vector2 endPos)
     move.endPos = endPos;
     move.pieceisWhite = piece->isWhite;
     move.pieceType = piece->type;
+    move.isCapture=IsCapture(endPos,pieceIndex);
+    Vector2 kinPos=FindKingPosition(!move.pieceisWhite);
+    endPos=piece->pos;
+    piece->pos=move.endPos;
+    move.isCheck=IsValidMoveWithoutCheck(pieceIndex,kinPos);
+    piece->pos=endPos;
     piece->moves[piece->moveIndex++] = move;
+   
+}
+int CompareMoves(const void *a, const void *b) {
+    Move *moveA = (Move *)a;
+    Move *moveB = (Move *)b;
+    return GetMovePriority(moveB) - GetMovePriority(moveA);
+}
+void SortMovesByPriority(Piece *piece) {
+    qsort(piece->moves, piece->moveIndex, sizeof(Move), CompareMoves);
+}
+
+
+void GenerateRookMoves(int pieceIndex,int startX,int startY){
+     for (int i = startX-1; i>=0; i--)
+        {
+            
+            Vector2 move = {(i) * col_width, startY * col_height};
+            if (IsValidMove(pieceIndex, move))
+            {
+                AddMove(pieceIndex, move);
+            }else{
+                break;
+            }
+            
+        }
+        for (int i = startX+1; i < COLS; i++)
+        {
+           
+                Vector2 move = {(i) * col_width, startY * col_height};
+                if (IsValidMove(pieceIndex, move))
+                {
+                    AddMove(pieceIndex, move);
+                }else{
+                    break;
+                }
+            
+        }
+        for (int i = startY+1; i < ROWS; i++)
+        {
+            
+                Vector2 move = {startX * col_width, ( i) * col_height};
+                if (IsValidMove(pieceIndex, move))
+                {
+                    AddMove(pieceIndex, move);
+                }else{
+                    break;
+                }
+            
+        }
+        for (int i = startY - 1; i >=0; i--)
+        {
+           
+                Vector2 move = {startX * col_width, (i) * col_height};
+                if (IsValidMove(pieceIndex, move))
+                {
+                    AddMove(pieceIndex, move);
+                }else{
+                    break;
+                }
+            
+        }
+
+}
+void GenerateBishopMoves(int pieceIndex,int startX,int startY){
+    for (int i = startX+1,j = startY + 1; i < COLS&&j<ROWS; i++,j++)
+        {
+            
+                Vector2 move = {(i) * col_width, (j) * col_height};
+                if (IsValidMove(pieceIndex, move))
+                {
+                    AddMove(pieceIndex, move);
+                }else{
+                    break;
+                }
+            
+        }
+        for (int i = startX-1,j=startY-1; i >=0&&j>=0; i--,j--)
+        {
+            
+                Vector2 move = {(i) * col_width, (j) * col_height};
+                if (IsValidMove(pieceIndex, move))
+                {
+                    AddMove(pieceIndex, move);
+                }else{
+                    break;
+                }
+            
+        }
+        for (int i = startX+1,j=startY-1; i < COLS&&j>=0; i++,j--)
+        {
+            
+                Vector2 move = {(i) * col_width, (j) * col_height};
+                if (IsValidMove(pieceIndex, move))
+                {
+                    AddMove(pieceIndex, move);
+                }else{
+                    break;
+                }
+            
+        }
+        for (int i = startX-1,j=startY+1; j < COLS&&i>=0; i--,j++)
+        {
+           
+                Vector2 move = {(i) * col_width, (j) * col_height};
+                if (IsValidMove(pieceIndex, move))
+                {
+                    AddMove(pieceIndex, move);
+                }else{
+                    break;
+                }
+            
+        }
+        
 }
 void GenerateAllLegalMovesForPiece(int pieceIndex)
 {
@@ -412,51 +530,8 @@ void GenerateAllLegalMovesForPiece(int pieceIndex)
 
     case 'R':
     {
-
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS)
-            {
-                Vector2 move = {(startX + i) * col_width, startY * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX - i >= 0)
-            {
-                Vector2 move = {(startX - i) * col_width, startY * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < ROWS; i++)
-        {
-            if (startY + i < ROWS)
-            {
-                Vector2 move = {startX * col_width, (startY + i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < ROWS; i++)
-        {
-            if (startY - i >= 0)
-            {
-                Vector2 move = {startX * col_width, (startY - i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
+       
+        GenerateRookMoves(pieceIndex,startX,startY);      
         break;
     }
 
@@ -481,146 +556,16 @@ void GenerateAllLegalMovesForPiece(int pieceIndex)
 
     case 'B':
     {
-
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS && startY + i < ROWS)
-            {
-                Vector2 move = {(startX + i) * col_width, (startY + i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX - i >= 0 && startY - i >= 0)
-            {
-                Vector2 move = {(startX - i) * col_width, (startY - i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS && startY - i >= 0)
-            {
-                Vector2 move = {(startX + i) * col_width, (startY - i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX - i >= 0 && startY + i < ROWS)
-            {
-                Vector2 move = {(startX - i) * col_width, (startY + i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
+        GenerateBishopMoves(pieceIndex,startX,startY);
         break;
+        
     }
 
     case 'Q':
     {
 
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS)
-            {
-                Vector2 move = {(startX + i) * col_width, startY * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX - i >= 0)
-            {
-                Vector2 move = {(startX - i) * col_width, startY * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < ROWS; i++)
-        {
-            if (startY + i < ROWS)
-            {
-                Vector2 move = {startX * col_width, (startY + i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < ROWS; i++)
-        {
-            if (startY - i >= 0)
-            {
-                Vector2 move = {startX * col_width, (startY - i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS && startY + i < ROWS)
-            {
-                Vector2 move = {(startX + i) * col_width, (startY + i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX - i >= 0 && startY - i >= 0)
-            {
-                Vector2 move = {(startX - i) * col_width, (startY - i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX + i < COLS && startY - i >= 0)
-            {
-                Vector2 move = {(startX + i) * col_width, (startY - i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
-        for (int i = 1; i < COLS; i++)
-        {
-            if (startX - i >= 0 && startY + i < ROWS)
-            {
-                Vector2 move = {(startX - i) * col_width, (startY + i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }
-            }
-        }
+        GenerateRookMoves(pieceIndex,startX,startY);
+        GenerateBishopMoves(pieceIndex,startX,startY);
         break;
     }
 
@@ -674,6 +619,8 @@ void GenerateAllLegalMoves(bool forWhite)
         if (pieces[i].isWhite == forWhite && pieces[i].canDraw)
         {
             GenerateAllLegalMovesForPiece(i);
+            Piece * p=&pieces[i];
+            SortMovesByPriority(p);
             currentMovesIndex += pieces[i].moveIndex;
         }
     }
@@ -815,33 +762,37 @@ void PlayMoveOnBoard(Vector2 newPos)
 void PlayMove(bool withWhite)
 {
     int score = INT_MAX;
+    clock_t begin =clock();
     for (int i = 0; i < pieceCount; i++)
     {
-        if (pieces[i].isWhite == withWhite && pieces[i].canDraw)
+        if (pieces[i].canDraw&&pieces[i].isWhite == withWhite)
         {
-            Piece piece = pieces[i];
-            for (int x = 0; x < piece.moveIndex; x++)
+            Piece *piece = &pieces[i];
+            
+            // SortMovesByPriority(piece);
+            for (int x = 0; x < piece->moveIndex; x++)
             {
 
-                Vector2 newPos = piece.moves[x].endPos;
-                if (IsValidMove(i, newPos))
+                Vector2 newPos = piece->moves[x].endPos;
+              
+                MoveState state = ApplyMove(i, newPos);
+
+                int eval = AlphaBeta(3, INT_MIN, INT_MAX, !withWhite);
+
+                UndoMove(state);
+                if (eval < score)
                 {
-
-                    MoveState state = ApplyMove(i, newPos);
-
-                    int eval = AlphaBeta(4, INT_MIN, INT_MAX, !withWhite);
-
-                    UndoMove(state);
-                    if (eval <= score)
-                    {
-                        gameState.computerMove = piece.moves[x];
-                        gameState.computerPieceIndex = i;
-                        score = eval;
-                    }
+                    gameState.computerMove = piece->moves[x];
+                    gameState.computerPieceIndex = i;
+                    score = eval;
                 }
+                
             }
         }
     }
+    clock_t end=clock();
+    double timeSpent=(end-begin)/CLOCKS_PER_SEC;
+    printf("TOOK: %f Score: %d\n",timeSpent,score);
     lastSelectedPiece = gameState.computerPieceIndex;
     PlayMoveOnBoard(gameState.computerMove.endPos);
 }
@@ -1107,6 +1058,22 @@ bool IsSquareUnderAttack(Vector2 square, bool isWhite)
     }
     return false;
 }
+bool IsCapture(Vector2 square, bool isWhite)
+{
+    for (int i = 0; i < pieceCount; i++)
+    {
+        if (!pieces[i].canDraw)
+            continue;
+        if (pieces[i].isWhite != isWhite)
+        {
+            if (IsVector2Equal(pieces[i].pos, square))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 bool IsVector2Equal(Vector2 a, Vector2 b)
 {
     return a.x == b.x && a.y == b.y;
@@ -1197,6 +1164,18 @@ bool IsStaleMate(bool isWhite)
     gameState.state |= 1;
     return true;
 }
+int GetMovePriority(Move *move)
+{
+    if (move->isCapture)
+        return 2;
+    if (move->isCheck)
+        return 1;
+       
+    return 0;
+}
+
+
+
 
 Vector2 FindKingPosition(bool isWhite)
 {
@@ -1272,15 +1251,72 @@ bool IsBlockedPawn(int pawnIndex)
     return IsSquareOccupied(squareInFront);
 }
 
+
+int numOfPieces(){
+    int n=0;
+    for (int i = 0; i < pieceCount; i++)
+    {
+        if(pieces[i].canDraw){
+            n++;
+        }
+    }
+    return n;
+    
+}
+bool IsEdgeSquare(Vector2 pos) {
+    int x = pos.x / col_width;
+    int y = pos.y / col_height;
+    return x == 0 || x == 7 || y == 0 || y == 7;
+}
+bool IsEndgame() {
+    int total_pieces = 0;
+    bool has_queen = false;
+    
+    for (int i = 0; i < pieceCount; i++) {
+        if (pieces[i].canDraw) {
+            total_pieces++;
+            if (pieces[i].type == 'Q') has_queen = true;
+        }
+    }
+    
+    return (total_pieces <= 6 && !has_queen) || (total_pieces <= 3);
+}
+int EvaluateKingCornering(bool isWhite, Vector2 kingPos) {
+    Vector2 corners[4] = {
+        {0, 7*col_height},          
+        {7*col_width, 7*col_height}, 
+        {0, 0},                     
+        {7*col_width, 0}                
+        };
+
+    int min_distance = INT_MAX;
+    for (int i = 0; i < 4; i++) {
+        int dx = abs((kingPos.x - corners[i].x)/col_width);
+        int dy = abs((kingPos.y - corners[i].y)/col_height);
+        int distance = dx + dy;
+        if (distance < min_distance) min_distance = distance;
+    }
+
+    return isWhite ? -(60 * min_distance) : (60 * min_distance);
+}
 int Eval()
 {
+    bool endGame = IsEndgame();  
+
+    int C = 0, C_ = 0;
     int K = 0, K_ = 0, Q = 0, Q_ = 0, P = 0, P_ = 0, B = 0, B_ = 0, N = 0, N_ = 0, R = 0, R_ = 0;
     int CheckScore = 0;
     int D = 0, D_ = 0, S = 0, S_ = 0, I = 0, I_ = 0;
+    int centerFileBonus = 0;  
+    int promotionBonus = 0;   
+    int eval = 0; 
+    int cornerBonus=0;
+    Vector2 blackKing;
+    Vector2 whiteKing;
     for (int i = 0; i < pieceCount; i++)
     {
-        if (!pieces[i].canDraw)
-            continue;
+        if (!pieces[i].canDraw) continue;
+
         if (pieces[i].isWhite)
         {
             K += pieces[i].type == 'K';
@@ -1299,33 +1335,84 @@ int Eval()
             N_ += pieces[i].type == 'N';
             B_ += pieces[i].type == 'B';
         }
+        
+        if(pieces[i].type=='K' && endGame){
+           if(pieces[i].isWhite){
+            whiteKing=pieces[i].pos;
+
+           }else{
+            blackKing=pieces[i].pos;
+           }
+        }
         if (pieces[i].type == 'P')
         {
+            int x=pieces[i].pos.x,y=pieces[i].pos.y;
+          
+            
             if (pieces[i].isWhite)
             {
+                
                 D += HasDoubledPawns(true);
                 I += IsIsolatedPawn(i);
                 S += IsBlockedPawn(i);
+
+                if (endGame && pieces[i].pos.y <=1)  
+                    promotionBonus += 100;  
             }
             else
             {
+               
                 D_ += HasDoubledPawns(false);
                 I_ += IsIsolatedPawn(i);
                 S_ += IsBlockedPawn(i);
+                
+                if (endGame && pieces[i].pos.y >= 6)  
+                    promotionBonus -= 100;  
             }
         }
     }
-    if (IsCheckMate(true))
-    {
-        K = 0;
+
+    
+    if (IsCheckMate(true)) K = 0;
+    else if (IsCheckMate(false)) K_ = 0;
+    
+    if(endGame){
+        cornerBonus += EvaluateKingCornering(true, blackKing);  
+        cornerBonus -= EvaluateKingCornering(false, whiteKing);
     }
-    else if (IsCheckMate(false))
-    {
-        K_ = 0;
-    }
-  
-    float eval = (2000) * (K - K_) + 90 * (Q - Q_) + 50 * (R - R_) + 30 * (B - B_ + N - N_) + 10 * (P + P_) - 5 * (D - D_ + S - S_ + I - I_);
+    eval+=cornerBonus;
+    eval += 900 * (Q - Q_);    
+    eval += 500 * (R - R_);    
+    eval += 330 * (B - B_);    
+    eval += 320 * (N - N_);    
+    eval += 100 * (P - P_);    
+    eval += 20000 * (K - K_);   
+    
+    
+    eval -= 20 * (D - D_);     
+    eval -= 30 * (I - I_);     
+    eval -= 10 * (S - S_);     
+
+    
+    eval += centerFileBonus;   
+    eval += promotionBonus;    
+
     return eval;
+}
+int GetEndgameMovePriority(Move *move) {
+    Vector2 opponentKing = FindKingPosition(!move->pieceisWhite);
+    
+    int dx = abs(move->endPos.x/col_width - opponentKing.x/col_width);
+    int dy = abs(move->endPos.y/col_height - opponentKing.y/col_height);
+    int distance = dx + dy;
+
+    int priority = 0;
+    
+    if (move->isCheck) priority += 1000;
+    if (move->pieceType == 'K') priority += 500 - distance;
+    if (IsEdgeSquare(move->endPos)) priority += 300;
+    
+    return priority;
 }
 int CalulatePossiblePosition(int depth,bool isWhiteTurn)
 {
@@ -1333,23 +1420,26 @@ int CalulatePossiblePosition(int depth,bool isWhiteTurn)
     {
         return 1;
     }
-
     int totalMoves = 0;
     
+    Move allMoves[pieceCount][64];
+    int moveCounts[pieceCount];
 
+for (int i = 0; i < pieceCount; i++) {
+    GenerateAllLegalMovesForPiece(i);
+    memcpy(allMoves[i], pieces[i].moves, sizeof(Move)*pieces[i].moveIndex);
+    moveCounts[i] = pieces[i].moveIndex;
+}
     for (int i = 0; i < pieceCount; i++)
     {
         if (pieces[i].isWhite == isWhiteTurn && pieces[i].canDraw)
         {
 
-            for (int x = 0; x < COLS; x++)
-            {
-                for (int y = 0; y < ROWS; y++)
+                for (int j = 0; j < moveCounts[i]; j++)
                 {
-                    Vector2 newPos = {x * col_width, y * col_height};
-
-                    if (IsValidMove(i, newPos))
-                    {
+                
+                
+                    Vector2 newPos = allMoves[i][j].endPos;
                          if (pieces[i].type == 'P' && IsPromotionSquare(newPos, pieces[i].isWhite))
                             {
                                 char promotions[] = "QRNB";
@@ -1361,31 +1451,42 @@ int CalulatePossiblePosition(int depth,bool isWhiteTurn)
                                     pieces[i].type = promotions[j];
                                     totalMoves += CalulatePossiblePosition(depth - 1,!isWhiteTurn);
                                 }
+                                pieces[i].type='P';
                                 UndoMove(state);
                             }else{
 
                                 MoveState state=ApplyMove(i,newPos);
                                 totalMoves += CalulatePossiblePosition(depth - 1,!isWhiteTurn);
+
                                 UndoMove(state);
+
                             }
 
 
                         
-                    }
+                    
                 }
-            }
+                memcpy(pieces[i].moves,allMoves[i], sizeof(Move)*pieces[i].moveIndex);
+                pieces[i].moveIndex=moveCounts[i];
         }
+        
+        
+        
+
     }
 
     return totalMoves;
 }
-
 int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer)
 {
     if (depth == 0 || IsCheckMate(isMaximizingPlayer) || IsStaleMate(isMaximizingPlayer))
     {
         return Eval();
     }
+         
+   
+
+   
 
     if (isMaximizingPlayer)
     {
@@ -1477,7 +1578,7 @@ int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer)
 
                                 UndoMove(state);
                                 beta = (beta < minEval) ? beta : minEval;
-                                if (beta < alpha)
+                                if (beta <= alpha)
                                 {
 
                                     return minEval;
@@ -1509,13 +1610,34 @@ int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer)
     }
 }
 
+
+int IterativeDeepening(int maxDepth, int alpha, int beta, bool isMaximizingPlayer, double timeLimitInSeconds)
+{
+    clock_t begin = clock();
+    double time_spent;
+    int bestEval = 0;
+    int depth = 1;
+    for (; depth <= maxDepth; depth++)
+    {
+        bestEval = AlphaBeta(depth, alpha, beta, isMaximizingPlayer);
+
+        clock_t end = clock();
+        time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+        if (time_spent >= timeLimitInSeconds)
+        {
+            break;
+        }
+    }
+    return bestEval;
+}
+
 void UndoMove(MoveState state)
 {
 
     pieces[state.pieceIndex].pos = state.originalPos;
     if (state.promoteTo != -1)
     {
-        pieces[state.pieceIndex].type == state.promoteTo;
+        pieces[state.pieceIndex].type = state.promoteTo;
     }
 
     if (state.capturedIndex != -1)
