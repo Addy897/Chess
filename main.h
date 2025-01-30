@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
+#include "preComputeMoves.h"
 #define COLS 8
 #define ROWS 8
 #define SIDE_WIDTH 400
@@ -23,6 +23,7 @@ typedef struct
     bool pieceisWhite;
     bool isCapture;
     bool isCheck;
+    char capturePieceType;
 } Move;
 typedef struct {
     int promoteTo;
@@ -45,7 +46,7 @@ typedef struct
     bool isWhite;
     bool canDraw;
     bool hasMoved;
-    Move moves[27];
+    Move moves[64];
     int moveIndex;
 } Piece;
 typedef struct
@@ -158,9 +159,8 @@ bool IsLegalMove(int pieceIndex, Vector2 newPos);
 bool IsSquareOccupied(Vector2 pos);
 bool IsIsolatedPawn(int pawnIndex);
 bool IsBlockedPawn(int pawnIndex);
-bool IsCapture(Vector2 square, bool isWhite);
 
-
+int IsCapture(Vector2 square, bool isWhite);
 int CalulatePossiblePosition(int depth,bool isWhiteTurn);
 int HasDoubledPawns(bool isWhite);
 int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer);

@@ -3,6 +3,7 @@ static Piece pieces[ROWS * COLS] = {0};
 int main(int argc, char const *argv[])
 {
     char fen[100];
+    preComputeAll();
     strcpy(fen, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     int depth = 0;
     if (argc == 3)
@@ -363,7 +364,7 @@ void AddMove(int pieceIndex, Vector2 endPos)
     move.endPos = endPos;
     move.pieceisWhite = piece->isWhite;
     move.pieceType = piece->type;
-    move.isCapture=IsCapture(endPos,pieceIndex);
+    move.capturePieceType=IsCapture(endPos,pieceIndex);
     Vector2 kinPos=FindKingPosition(!move.pieceisWhite);
     endPos=piece->pos;
     piece->pos=move.endPos;
@@ -381,6 +382,25 @@ void SortMovesByPriority(Piece *piece) {
     qsort(piece->moves, piece->moveIndex, sizeof(Move), CompareMoves);
 }
 
+int GetPieceValue(char type){
+    switch (type)
+    {
+    case 'P':
+        return 100;
+    case 'K':
+        return 20000;
+    case 'Q':
+        return 900;
+    case 'B':
+        return 330;
+    case 'R':
+        return 500;
+    case 'N':
+        return 300;
+    default:
+        break;
+    }
+}
 
 void GenerateRookMoves(int pieceIndex,int startX,int startY){
      for (int i = startX-1; i>=0; i--)
@@ -763,28 +783,37 @@ void PlayMove(bool withWhite)
 {
     int score = INT_MAX;
     clock_t begin =clock();
+    if(gameState.state!=0)
+    {
+        return;
+    }
+    GenerateAllLegalMoves(withWhite);
     for (int i = 0; i < pieceCount; i++)
     {
         if (pieces[i].canDraw&&pieces[i].isWhite == withWhite)
         {
             Piece *piece = &pieces[i];
             
-            // SortMovesByPriority(piece);
-            for (int x = 0; x < piece->moveIndex; x++)
+            
+            for (int j = 0; j < pieces[i].moveIndex; j++)
             {
+                Vector2 newPos = piece->moves[j].endPos;
 
-                Vector2 newPos = piece->moves[x].endPos;
+                if(IsValidMove(i,newPos)){
               
-                MoveState state = ApplyMove(i, newPos);
+                    MoveState state = ApplyMove(i, newPos);
 
-                int eval = AlphaBeta(3, INT_MIN, INT_MAX, !withWhite);
+                    int eval = AlphaBeta(3, INT_MIN, INT_MAX, !withWhite);
 
-                UndoMove(state);
-                if (eval < score)
-                {
-                    gameState.computerMove = piece->moves[x];
-                    gameState.computerPieceIndex = i;
-                    score = eval;
+                    UndoMove(state);
+                    if (eval < score)
+                    {
+                        gameState.computerMove = piece->moves[j];
+                        gameState.computerPieceIndex = i;
+                        score = eval;
+                    }
+                }else{
+                    printf("Invalid: %c --> %d %d\n",piece->type,newPos.x,newPos.y);
                 }
                 
             }
@@ -1058,7 +1087,7 @@ bool IsSquareUnderAttack(Vector2 square, bool isWhite)
     }
     return false;
 }
-bool IsCapture(Vector2 square, bool isWhite)
+int IsCapture(Vector2 square, bool isWhite)
 {
     for (int i = 0; i < pieceCount; i++)
     {
@@ -1068,11 +1097,11 @@ bool IsCapture(Vector2 square, bool isWhite)
         {
             if (IsVector2Equal(pieces[i].pos, square))
             {
-                return true;
+                return pieces[i].type;
             }
         }
     }
-    return false;
+    return -1;
 }
 bool IsVector2Equal(Vector2 a, Vector2 b)
 {
@@ -1166,10 +1195,13 @@ bool IsStaleMate(bool isWhite)
 }
 int GetMovePriority(Move *move)
 {
-    if (move->isCapture)
-        return 2;
+    if (move->capturePieceType){
+            int capt=GetPieceValue(move->capturePieceType);
+            int val=GetPieceValue(move->pieceType);
+            return (capt-val)*100;
+    }
     if (move->isCheck)
-        return 1;
+        return 50;
        
     return 0;
 }
@@ -1336,7 +1368,7 @@ int Eval()
             B_ += pieces[i].type == 'B';
         }
         
-        if(pieces[i].type=='K' && endGame){
+        if(pieces[i].type=='K'){
            if(pieces[i].isWhite){
             whiteKing=pieces[i].pos;
 
@@ -1357,7 +1389,7 @@ int Eval()
                 S += IsBlockedPawn(i);
 
                 if (endGame && pieces[i].pos.y <=1)  
-                    promotionBonus += 100;  
+                    promotionBonus += 1000;  
             }
             else
             {
@@ -1367,7 +1399,7 @@ int Eval()
                 S_ += IsBlockedPawn(i);
                 
                 if (endGame && pieces[i].pos.y >= 6)  
-                    promotionBonus -= 100;  
+                    promotionBonus -= 1000;  
             }
         }
     }
@@ -1414,68 +1446,93 @@ int GetEndgameMovePriority(Move *move) {
     
     return priority;
 }
-int CalulatePossiblePosition(int depth,bool isWhiteTurn)
-{
-    if (depth == 0)
-    {
-        return 1;
+int CalulatePossiblePosition(int depth, bool isWhiteTurn) {
+    if (depth == 0) {
+        return 1;  
     }
+
     int totalMoves = 0;
+
     
-    Move allMoves[pieceCount][64];
-    int moveCounts[pieceCount];
+    for (int i = 0; i < pieceCount; i++) {
+        
+        if (pieces[i].isWhite == isWhiteTurn && pieces[i].canDraw) {
 
-for (int i = 0; i < pieceCount; i++) {
-    GenerateAllLegalMovesForPiece(i);
-    memcpy(allMoves[i], pieces[i].moves, sizeof(Move)*pieces[i].moveIndex);
-    moveCounts[i] = pieces[i].moveIndex;
-}
-    for (int i = 0; i < pieceCount; i++)
-    {
-        if (pieces[i].isWhite == isWhiteTurn && pieces[i].canDraw)
-        {
+            Squares possibleMoves;
+            int index=63-((pieces[i].pos.y/col_height)*8+(pieces[i].pos.x/col_width));
+            
+            switch (pieces[i].type) {
+                case 'P':
+                    possibleMoves = pieces[i].isWhite ? whitePawnSquares[index] : blackPawnSquares[index];
+                    break;
+                case 'N':
+                    possibleMoves = knightSquares[index];
+                    break;
+                case 'B':
+                    possibleMoves = bishopSquares[index];
+                    break;
+                case 'R':
+                    possibleMoves = rookSquares[index];
+                    break;
+                case 'Q':
+                    possibleMoves = queenSquares[index];
+                    break;
+                case 'K':
+                    possibleMoves = kingSquares[index];
+                    break;
+                default:
+                    break;
+            }
+            if (possibleMoves.n != -1) {
+                for (int j = 0; j < possibleMoves.n; j++) {  
+                    char sq = 63-possibleMoves.to[j];
+                    Vector2 newPos=(Vector2){.x=(sq % 8)*col_width,.y=(sq/8)*col_height};
+                    // char from[3];
+                    // char to[3];
+                    // squareToNotation(index,from);
+                    // squareToNotation(possibleMoves.to[j],to);
+                    // printf("%c %c %s %s\n",pieces[i].isWhite?'W':'B',pieces[i].type,from,to)  ;
 
-                for (int j = 0; j < moveCounts[i]; j++)
-                {
-                
-                
-                    Vector2 newPos = allMoves[i][j].endPos;
-                         if (pieces[i].type == 'P' && IsPromotionSquare(newPos, pieces[i].isWhite))
-                            {
-                                char promotions[] = "QRNB";
+                    
+                    if (IsValidMove(i, newPos)) {
+                        
+                        if (pieces[i].type == 'P' && IsPromotionSquare(newPos, pieces[i].isWhite)) {
+                            char promotions[] = "QRNB";
 
-                                MoveState state = ApplyMove(i, newPos);
-                                state.promoteTo = 'P';
-                                for (int j = 0; j < 4; j++)
-                                {
-                                    pieces[i].type = promotions[j];
-                                    totalMoves += CalulatePossiblePosition(depth - 1,!isWhiteTurn);
-                                }
-                                pieces[i].type='P';
-                                UndoMove(state);
-                            }else{
+                            
+                            MoveState state = ApplyMove(i, newPos);
+                            state.promoteTo = 'P';  
 
-                                MoveState state=ApplyMove(i,newPos);
-                                totalMoves += CalulatePossiblePosition(depth - 1,!isWhiteTurn);
-
-                                UndoMove(state);
-
+                            
+                            for (int k = 0; k < 4; k++) {
+                                pieces[i].type = promotions[k];  
+                                
+                                
+                                totalMoves += CalulatePossiblePosition(depth - 1, !isWhiteTurn);
                             }
 
+                            
+                            pieces[i].type = 'P';
+                            UndoMove(state);
+                        }
+                        else {
+                            
+                            MoveState state = ApplyMove(i, newPos);
+                            
+                            
+                            totalMoves += CalulatePossiblePosition(depth - 1, !isWhiteTurn);
 
-                        
-                    
+                            
+                            UndoMove(state);
+                        }
+                    }
+
                 }
-                memcpy(pieces[i].moves,allMoves[i], sizeof(Move)*pieces[i].moveIndex);
-                pieces[i].moveIndex=moveCounts[i];
+            }
         }
-        
-        
-        
-
     }
 
-    return totalMoves;
+    return totalMoves;  
 }
 int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer)
 {
@@ -1503,11 +1560,12 @@ int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer)
 
                         if (IsValidMove(i, newPos))
                         {
+                            MoveState state = ApplyMove(i, newPos);
+
                             if (pieces[i].type == 'P' && IsPromotionSquare(newPos, pieces[i].isWhite))
                             {
                                 char promotions[] = "QRNB";
 
-                                MoveState state = ApplyMove(i, newPos);
                                 state.promoteTo ='P';
                                 for (int j = 0; j < 4; j++)
                                 {
@@ -1518,28 +1576,21 @@ int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer)
                                 }
                                 pieces[i].type= 'P';
 
-                                UndoMove(state);
-                                alpha = (alpha > maxEval) ? alpha : maxEval;
-                                if (beta < alpha)
-                                {
-                                    return maxEval;
-                                }
+                                
                             }
                             else
                             {
-                                MoveState state = ApplyMove(i, newPos);
-
                                 int eval = AlphaBeta(depth - 1, alpha, beta, false);
-
-                                UndoMove(state);
-
                                 maxEval = (eval > maxEval) ? eval : maxEval;
+
+                               
+                            }
+                                UndoMove(state);
                                 alpha = (alpha > maxEval) ? alpha : maxEval;
-                                if (beta < alpha)
+                                if (beta <= alpha)
                                 {
                                     return maxEval;
                                 }
-                            }
                         }
                     }
                 }
@@ -1561,11 +1612,12 @@ int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer)
                         Vector2 newPos = {x * col_width, y * col_height};
                         if (IsValidMove(i, newPos))
                         {
+                            MoveState state = ApplyMove(i, newPos);
+
                             if (pieces[i].type == 'P' && IsPromotionSquare(newPos, pieces[i].isWhite))
                             {
                                 char promotions[] = "QRNB";
 
-                                MoveState state = ApplyMove(i, newPos);
                                 state.promoteTo = 'P';
                                 for (int j = 0; j < 4; j++)
                                 {
@@ -1576,30 +1628,25 @@ int AlphaBeta(int depth, int alpha, int beta, bool isMaximizingPlayer)
                                 }
                                 pieces[i].type= 'P';
 
-                                UndoMove(state);
-                                beta = (beta < minEval) ? beta : minEval;
-                                if (beta <= alpha)
-                                {
-
-                                    return minEval;
-                                }
+                                
 
                                 
                             }
                             else
                             {
-                                MoveState state = ApplyMove(i, newPos);
 
                                 int eval = AlphaBeta(depth - 1, alpha, beta, true);
-
-                                UndoMove(state);
-
                                 minEval = (eval < minEval) ? eval : minEval;
-                                beta = (beta < minEval) ? beta : minEval;
-                                if (beta < alpha)
-                                {
-                                    return minEval;
-                                }
+
+
+                                
+                            }
+                            UndoMove(state);
+
+                            beta = (beta < minEval) ? beta : minEval;
+                            if (beta <= alpha)
+                            {
+                                return minEval;
                             }
                         }
                     }
