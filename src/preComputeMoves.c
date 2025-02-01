@@ -1,9 +1,5 @@
+#include <preComputeMoves.h>
 #include <stdio.h>
-typedef unsigned char uc;
-typedef struct{
-    uc to[28];
-    uc n;
-}Squares;
 Squares queenSquares[64] = {0}; 
 Squares kingSquares[64] = {0}; 
 Squares knightSquares[64] = {0};
@@ -199,4 +195,3 @@ void printMoves(Squares squares, char fromSquare, char * piece) {
     }
     printf("\n");
 }
-
