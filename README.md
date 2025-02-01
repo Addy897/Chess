@@ -41,7 +41,7 @@ A modern chess engine built with [Raylib](https://www.raylib.com/) for graphics 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/chess-engine.git
+   git clone https://github.com/Addy897/Chess.git
    cd chess-engine
    ```
 
