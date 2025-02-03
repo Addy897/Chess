@@ -1,11 +1,16 @@
 #include <main.h>
 
+
 bool IsLegalMove(int pieceIndex, Vector2 newPos)
 {
-    Piece piece = pieces[pieceIndex];
-    for (int i = 0; i < piece.moveIndex; i++)
+    int rank = 7-(int)(newPos.y/col_height);
+    int file = (int)(newPos.x/col_width);
+    char sqr=rank*8+file;
+    for (int i = 0; i < currentMovesIndex; i++)
     {
-        if (IsVector2Equal(piece.moves[i].endPos, newPos))
+        char sq=getMoveTo(BoardMoves[i]);
+        char currentPieceIndex=getMovePieceIndex(BoardMoves[i]);
+        if (currentPieceIndex==pieceIndex && sq==sqr)
         {
             return true;
         }
@@ -50,11 +55,12 @@ bool IsPieceBetween(Vector2 start, Vector2 end, int skipIndex)
     return false;
 }
 
+
 bool IsPieceBetweenDiagonal(Vector2 start, Vector2 end, int skipIndex)
 {
     for (int i = 0; i < pieceCount; i++)
     {
-         Piece * p = getPiece(i);
+        Piece * p = getPiece(i);
         if (i == skipIndex || !p->canDraw)
             continue;
 
@@ -137,8 +143,8 @@ bool ValidatePawnMove(Piece piece, Vector2 newPos, int dx, int dy)
 
 bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos)
 {
-    Piece piece = pieces[pieceIndex];
-    if (!piece.canDraw || !IsWithinBoard(newPos))
+    Piece*piece = getPiece(pieceIndex);
+    if (!piece->canDraw || !IsWithinBoard(newPos))
     {
         return false;
     }
@@ -148,36 +154,36 @@ bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos)
          Piece * p = getPiece(i);
         if (i == pieceIndex || !p->canDraw)
             continue;
-        if (IsVector2Equal(p->pos, newPos) && p->isWhite == piece.isWhite)
+        if (IsVector2Equal(p->pos, newPos) && p->isWhite == piece->isWhite)
         {
             return false;
         }
     }
 
-    int dx = (newPos.x - piece.pos.x) / col_width;
-    int dy = (newPos.y - piece.pos.y) / col_height;
+    int dx = (newPos.x - piece->pos.x) / col_width;
+    int dy = (newPos.y - piece->pos.y) / col_height;
     int abs_dx = abs(dx);
     int abs_dy = abs(dy);
 
-    switch (piece.type)
+    switch (piece->type)
     {
     case 'P':
-        return ValidatePawnMove(piece, newPos, dx, dy);
+        return ValidatePawnMove(*piece, newPos, dx, dy);
 
     case 'R':
         return ((dx == 0 && dy != 0) || (dy == 0 && dx != 0)) &&
-               !IsPieceBetween(piece.pos, newPos, pieceIndex);
+               !IsPieceBetween(piece->pos, newPos, pieceIndex);
 
     case 'N':
         return (abs_dx == 2 && abs_dy == 1) || (abs_dx == 1 && abs_dy == 2);
 
     case 'B':
-        return abs_dx == abs_dy && !IsPieceBetweenDiagonal(piece.pos, newPos, pieceIndex);
+        return abs_dx == abs_dy && !IsPieceBetweenDiagonal(piece->pos, newPos, pieceIndex);
 
     case 'Q':
         return ((abs_dx == abs_dy) || (dx == 0 && dy != 0) || (dy == 0 && dx != 0)) &&
-               !IsPieceBetween(piece.pos, newPos, pieceIndex) &&
-               !IsPieceBetweenDiagonal(piece.pos, newPos, pieceIndex);
+               !IsPieceBetween(piece->pos, newPos, pieceIndex) &&
+               !IsPieceBetweenDiagonal(piece->pos, newPos, pieceIndex);
 
     case 'K':
     {
@@ -185,10 +191,10 @@ bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos)
         if (abs_dx <= 1 && abs_dy <= 1)
             return true;
 
-        if (abs_dx == 2 && dy == 0 && !piece.hasMoved)
+        if (abs_dx == 2 && dy == 0 && !piece->hasMoved)
         {
             int direction = dx > 0 ? 1 : -1;
-            Vector2 rookStartPos = {direction > 0 ? 7 * col_width : 0, piece.pos.y};
+            Vector2 rookStartPos = {direction > 0 ? 7 * col_width : 0, piece->pos.y};
 
             bool rookFound = false;
             for (int i = 0; i < pieceCount; i++)
@@ -205,13 +211,13 @@ bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos)
             if (!rookFound)
                 return false;
 
-            if (IsPieceBetween(piece.pos, newPos, pieceIndex))
+            if (IsPieceBetween(piece->pos, newPos, pieceIndex))
                 return false;
 
-            Vector2 intermediate = {piece.pos.x + direction * col_width, piece.pos.y};
-            return !IsSquareUnderAttack(piece.pos, piece.isWhite) &&
-                   !IsSquareUnderAttack(intermediate, piece.isWhite) &&
-                   !IsSquareUnderAttack(newPos, piece.isWhite);
+            Vector2 intermediate = {piece->pos.x + direction * col_width, piece->pos.y};
+            return !IsSquareUnderAttack(piece->pos, piece->isWhite) &&
+                   !IsSquareUnderAttack(intermediate, piece->isWhite) &&
+                   !IsSquareUnderAttack(newPos, piece->isWhite);
         }
         return false;
     }
@@ -232,24 +238,24 @@ bool IsValidMove(int pieceIndex, Vector2 newPos)
 {
     if (pieceIndex < 0 || pieceIndex >= pieceCount)
         return false;
-    Piece originalPiece = pieces[pieceIndex];
+    Piece * originalPiece = getPiece(pieceIndex);
+    Vector2 originalPos = originalPiece->pos;
 
-    if (IsVector2Equal(originalPiece.pos, newPos))
+
+    if (IsVector2Equal(originalPos, newPos))
         return false;
     if (!IsValidMoveWithoutCheck(pieceIndex, newPos))
         return false;
 
-    Vector2 originalPos = pieces[pieceIndex].pos;
-    int capturedIndex = -1;
-    int enpassantCapturedIndex = -1;
 
     MoveState Move = ApplyMove(pieceIndex, newPos);
     pieces[pieceIndex].pos = newPos;
-
-    bool stillInCheck = IsKingInCheck(originalPiece.isWhite);
+    int capturedIndex=fmax(Move.capturedIndex,Move.enPassantCapturedIndex);
+    bool stillInCheck = IsKingInCheck(originalPiece->isWhite);
     UndoMove(Move);
-
+    
     return !stillInCheck;
+   
 }
 bool IsSquareUnderAttack(Vector2 square, bool isWhite)
 {

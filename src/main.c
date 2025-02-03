@@ -4,7 +4,7 @@ const int screenWidth = 800;
 const int col_width = screenWidth / COLS;
 const int col_height = screenHeight / ROWS;
 Piece pieces[ROWS * COLS] = {0};
-
+int BoardMoves[64]={0};
 PromotionChoice pendingPromotion = PROMOTION_NONE;
 Move lastMove = {0};
 GameState gameState = {0};
@@ -45,6 +45,9 @@ int main(int argc, char const *argv[])
             return 0;
         }
     }
+
+
+
     const char *title = "Chess with FEN";
     InitWindow(screenWidth + SIDE_WIDTH, screenHeight, title);
     InitAudioDevice();
@@ -59,7 +62,8 @@ int main(int argc, char const *argv[])
     gameState.playingWithComputer = true;
     gameState.isWhiteTurn = strtok(NULL, " ")[0] == 'w';
     gameState.state=0;
-    GenerateAllLegalMoves(gameState.isWhiteTurn);
+    
+    currentMovesIndex=GenerateAllLegalMoves(gameState.isWhiteTurn,BoardMoves);
     SetTargetFPS(144);
     while (!WindowShouldClose())
     {
@@ -86,11 +90,11 @@ int main(int argc, char const *argv[])
         {
             char winner[6];
             if (lastMove.pieceisWhite){
-                strcpy(winner, "White");
+                strncpy(winner, "White",5);
                 gameState.state=1<<3;
             }
             else{
-                strcpy(winner, "Black");
+                strncpy(winner, "Black",5);
                 gameState.state=1<<2;
             }
 

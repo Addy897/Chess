@@ -4,7 +4,7 @@ bool IsSquareOccupied(Vector2 pos)
 {
     for (int i = 0; i < pieceCount; i++)
     {
-                    Piece * p = getPiece(i);
+        Piece * p = getPiece(i);
 
         if (p->canDraw && IsVector2Equal(p->pos, pos))
         {
@@ -121,8 +121,8 @@ float MopUpEval(Vector2 friendlyKing, Vector2 opponentKing, int myMaterial, int 
 
         
 
-        mopUpScore += (float)kingcomputeManhattanDistance(opponentKing.x/col_width,opponentKing.y/col_height) * 10;
-        mopUpScore += (float)(14 - computeManhattanDistance(friendlyKing, opponentKing)) * 4;
+        mopUpScore += kingcomputeManhattanDistance((int)opponentKing.x/col_width,(int)opponentKing.y/col_height) * 10;
+        mopUpScore += (14 - computeManhattanDistance(friendlyKing, opponentKing)) * 4;
 
     
 
@@ -204,8 +204,8 @@ double Eval()
     float blackEndgameWeight =EndgamePhaseWeight(blackMaterial);
     wEval+= MopUpEval(whiteKing,blackKing,whiteMaterial,blackMaterial,whiteEndgameWeight);
     bEval+= MopUpEval(blackKing,whiteKing,blackMaterial,whiteMaterial,blackEndgameWeight);
-    wEval += (float)EvaluatePieceSquareTables (true,whiteEndgameWeight ,whiteKing);
-    bEval += (float)EvaluatePieceSquareTables (false, blackEndgameWeight,blackKing);
+    wEval += EvaluatePieceSquareTables (true,whiteEndgameWeight ,whiteKing);
+    bEval += EvaluatePieceSquareTables (false, blackEndgameWeight,blackKing);
     if (IsCheckMate(true))
     {
         return INT_MIN;

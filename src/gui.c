@@ -13,11 +13,23 @@ void DrawBoard()
             if (black)
             {
                 DrawRectangle(i * col_width, j * col_height, col_width, col_height, dark);
+
             }
             else
             {
                 DrawRectangle(i * col_width, j * col_height, col_width, col_height, light);
             }
+            if(j==7){
+                char text[24];
+                sprintf(text,"%c",97+i);
+                DrawText(text,i * col_width+5,j * col_height+80,16,BLACK);
+            }
+            if(i==7){
+                char text[24];
+                sprintf(text,"%d",8-j);
+                DrawText(text,i * col_width+80,j * col_height+5,16,BLACK);
+            }
+            
             black = !black;
         }
         black = !black;
@@ -167,18 +179,20 @@ void DrawPromotionPopup(Texture2D piecesTexture)
         pendingPromotion = PROMOTION_NONE;
 
         gameState.isWhiteTurn = !gameState.isWhiteTurn;
-        GenerateAllLegalMoves(gameState.isWhiteTurn);
+        currentMovesIndex=GenerateAllLegalMoves(gameState.isWhiteTurn,BoardMoves);
     }
 }
 void HighlightLegalMoves(int pieceIndex)
 {
-    Piece * piece = getPiece(pieceIndex);
-    for (int i = 0; i < piece->moveIndex; i++)
+    for (int i = 0; i <currentMovesIndex; i++)
     {
-        if (piece->canDraw)
+        char index=getMovePieceIndex(BoardMoves[i]);
+        if (pieceIndex==index)
         {
+            Vector2 newPos =moveToVector2(BoardMoves[i]);
 
-            DrawRectangle(piece->moves[i].endPos.x, piece->moves[i].endPos.y, col_width, col_height, Fade(GREEN, 0.5f));
+
+            DrawRectangle(newPos.x,newPos.y, col_width, col_height, Fade(GREEN, 0.5f));
         }
     }
 }
@@ -189,9 +203,10 @@ void HighlightPreviousMove()
 }
 void PlayMoveOnBoard(Vector2 newPos)
 {
-    if (IsVector2Equal(pieces[lastSelectedPiece].pos, newPos))
+    Piece * lastPiece =getPiece(lastSelectedPiece);
+    if (IsVector2Equal(lastPiece->pos, newPos))
     {
-        pieces[lastSelectedPiece].isDragging = false;
+        lastPiece->isDragging = false;
         lastSelectedPiece = -1;
         return;
     }
@@ -210,7 +225,7 @@ void PlayMoveOnBoard(Vector2 newPos)
             }
             if (IsVector2Equal(p->pos, newPos))
             {
-                if (pieces[lastSelectedPiece].isWhite == p->isWhite || p->type == 'K')
+                if (lastPiece->isWhite == p->isWhite || p->type == 'K')
                 {
                     canMove = false;
                     break;
@@ -226,14 +241,14 @@ void PlayMoveOnBoard(Vector2 newPos)
         }
         if (canMove)
         {
-            if (pieces[lastSelectedPiece].type == 'K' && abs((newPos.x - pieces[lastSelectedPiece].pos.x) / col_width) == 2)
+            if (lastPiece->type == 'K' && abs((newPos.x - lastPiece->pos.x) / col_width) == 2)
             {
-                int direction = (newPos.x > pieces[lastSelectedPiece].pos.x) ? 1 : -1;
+                int direction = (newPos.x > lastPiece->pos.x) ? 1 : -1;
                 Vector2 rookNewPos = {newPos.x - direction * col_width, newPos.y};
 
                 for (int i = 0; i < pieceCount; i++)
                 {
-                                Piece * p = getPiece(i);
+                    Piece * p = getPiece(i);
 
                     if (p->type == 'R' && p->pos.y == newPos.y)
                     {
@@ -250,23 +265,20 @@ void PlayMoveOnBoard(Vector2 newPos)
             HandleEnPassant(lastSelectedPiece, newPos);
 
             UpdateLastMove(lastSelectedPiece, newPos);
-            if (pieces[lastSelectedPiece].pos.x != newPos.x || pieces[lastSelectedPiece].pos.y != newPos.y)
+            if (lastPiece->pos.x != newPos.x || lastPiece->pos.y != newPos.y)
             {
-                pieces[lastSelectedPiece].hasMoved = true;
+                lastPiece->hasMoved = true;
             }
-            pieces[lastSelectedPiece].pos = newPos;
-            if (IsKingInCheck(!pieces[lastSelectedPiece].isWhite))
+            lastPiece->pos = newPos;
+            if (IsKingInCheck(!lastPiece->isWhite))
             {
                 PlaySound(checkSound);
-            }
-            else if (isCapture)
-            {
             }
             else
             {
                 PlaySound(moveSound);
             }
-            if (pieces[lastSelectedPiece].type == 'P' && IsPromotionSquare(newPos, pieces[lastSelectedPiece].isWhite))
+            if (lastPiece->type == 'P' && IsPromotionSquare(newPos, lastPiece->isWhite))
             {
                 promotingPieceIndex = lastSelectedPiece;
             }
@@ -274,10 +286,10 @@ void PlayMoveOnBoard(Vector2 newPos)
             if (promotingPieceIndex == -1)
             {
                 gameState.isWhiteTurn = !gameState.isWhiteTurn;
-                GenerateAllLegalMoves(gameState.isWhiteTurn);
+                currentMovesIndex=GenerateAllLegalMoves(gameState.isWhiteTurn,BoardMoves);
             }
         }
     }
-    pieces[lastSelectedPiece].isDragging = false;
+    lastPiece->isDragging = false;
     lastSelectedPiece = -1;
 }

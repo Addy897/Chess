@@ -57,7 +57,11 @@ typedef enum
     PROMOTION_BISHOP,
     PROMOTION_KNIGHT
 } PromotionChoice;
-
+typedef enum{
+    FLAG_NONE,
+    FLAG_CAPTURE,
+    FLAG_CASTLING,
+}FLAGS;
 
 
 #endif

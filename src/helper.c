@@ -22,6 +22,7 @@ void SetupPiecesFromFEN(const char *fen)
         else
         {
             Piece p;
+           
             p.type = c >= 'a' ? 'A' + (c - 'a') : c;
             p.pos = (Vector2){col * col_width, row * col_height};
             p.isDragging = false;
@@ -79,50 +80,38 @@ void CheckForInput()
 void PlayMove(bool withWhite)
 {
     double score = INT_MAX;
-   
     clock_t begin =clock();
-    
-    for (int i = 0; i < pieceCount; i++)
+    double currentEval= Eval();
+    printf("Current Eval: %f\n",currentEval);
+    for (int i = 0; i < currentMovesIndex; i++)
     {
-         Piece * p = getPiece(i);
-        if (p->canDraw&&p->isWhite == withWhite)
-        {
-          
-            
-            
-            for (int j = 0; j < p->moveIndex; j++)
-            {
-                 
-                Vector2 newPos = p->moves[j].endPos;
-
-                if(IsValidMove(i,newPos)){
-              
-                    MoveState state = ApplyMove(i, newPos);
-
-                    double eval = AlphaBeta(3, INT_MIN, INT_MAX, !withWhite);
-
-                    UndoMove(state);
-                    if (eval < score)
-                    {
-                        gameState.computerMove = p->moves[j];
-                        gameState.computerPieceIndex = i;
-                        score = eval;
-                    }
-                }else{
-                    printf("Invalid: %c --> %d %d\n",p->type,newPos.x,newPos.y);
-                }
+        Vector2 newPos=moveToVector2(BoardMoves[i]);
+        int pieceIndex=getMovePieceIndex(BoardMoves[i]);
+        // if(IsValidMove(pieceIndex,newPos)){
                 
+            MoveState state = ApplyMove(pieceIndex, newPos);
+
+            double eval = AlphaBeta(3, INT_MIN, INT_MAX, !withWhite);
+
+            UndoMove(state);
+            if (eval < score)
+            {
+                gameState.computerMove = (Move){.endPos=newPos};
+                gameState.computerPieceIndex = pieceIndex;
+                score = eval;
             }
-        }
+        // }
+              
     }
     clock_t end=clock();
     double timeSpent=(end-begin)/CLOCKS_PER_SEC;
     lastSelectedPiece = gameState.computerPieceIndex;
     char not[3];
-    squareToNotation((gameState.computerMove.endPos.y/col_height)*8+gameState.computerMove.endPos.x/col_width,not);
+    squareToNotation((7-((int)gameState.computerMove.endPos.y/col_height))*8+(int)gameState.computerMove.endPos.x/col_width,not);
     char move[5]={pieces[lastSelectedPiece].type+32};
     strcat(move,not);
-    //printf("TOOK: %f Score: %f Move: %s\n",timeSpent,score,move);
+    printf("TOOK: %f Score: %f Move: %s Total Moves: %d\n",timeSpent,score,move,currentMovesIndex);
+    
     PlayMoveOnBoard(gameState.computerMove.endPos);
 }
 
@@ -246,4 +235,21 @@ MoveState ApplyMove(int pieceIndex, Vector2 newPos)
     }
     pieces[pieceIndex].pos = newPos;
     return state;
+}
+
+char getMovePieceIndex(unsigned int move){
+    return (move>>16)&(63);
+}
+char getMoveFrom(int move){
+    return (move&63);
+}
+char getMoveTo(int move){
+    return (move>>6)&63;
+}
+Vector2 moveToVector2(int move){
+    char to=getMoveTo(move);
+    return (Vector2){.x=(float)((to%8)*col_width),.y=(float)((7-(to/8))*col_height)};
+}
+Vector2 squareToVector2(char to){
+    return (Vector2){.x=(float)((to%8)*col_width),.y=(float)((7-(to/8))*col_height)};
 }

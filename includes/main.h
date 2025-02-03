@@ -30,7 +30,7 @@
         extern int lastSelectedPiece;
         extern int promotingPieceIndex;
         extern int currentMovesIndex;
-
+        extern int BoardMoves[64];
 
         static inline Piece * getPiece(int index) {
             return &pieces[index];
@@ -40,8 +40,8 @@
             pieces[index] = p;
         }
         extern void AddMove(int pieceIndex,Vector2 endPos);
-        extern void GenerateAllLegalMovesForPiece(int pieceIndex);
-        extern void GenerateAllLegalMoves(bool forWhite);
+        extern void GenerateAllLegalMovesForPiece(int pieceIndex,int Moves[64],int*);
+        extern int GenerateAllLegalMoves(bool forWhite,int Moves[64]);
         extern void DrawBoard();
         extern void DrawPieces(Texture2D piecesTexture);
         extern void SetupPiecesFromFEN(const char *fen);
@@ -56,7 +56,6 @@
         extern void SortMovesByPriority(Piece *piece);
         extern bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos);
         extern bool IsKingInCheck(bool isWhite);
-        extern bool IsValidMove(int pieceIndex, Vector2 newPos);
         extern bool IsSquareUnderAttack(Vector2 square, bool isWhite);
         extern bool IsCheckMate(bool isWhite);
         extern bool IsStaleMate(bool isWhite);
@@ -68,6 +67,10 @@
         extern bool IsSquareOccupied(Vector2 pos);
         extern bool IsEdgeSquare(Vector2 pos);
 
+
+        extern char getMovePieceIndex(unsigned int move);
+        extern char getMoveFrom(int move);
+        extern char getMoveTo(int move);
         extern int GetPieceValue(char type);
         extern int IsCapture(Vector2 square, bool isWhite);
         extern int CalulatePossiblePosition(int depth,bool isWhiteTurn);
@@ -76,6 +79,8 @@
         extern double IterativeDeepening(int maxDepth, int alpha, int beta, bool isMaximizingPlayer, double timeLimitInSeconds);
         extern int GetMovePriority(Move *move);
         extern Vector2 FindKingPosition(bool isWhite);
+        extern Vector2 moveToVector2(int move);
+        extern Vector2 squareToVector2(char to);
         extern void UndoMove(MoveState state);
         extern void ApplyPromotion(MoveState *state);
         extern MoveState ApplyMove(int pieceIndex, Vector2 newPos);

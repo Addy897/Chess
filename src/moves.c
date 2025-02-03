@@ -1,176 +1,87 @@
 #include <main.h>
-void GenerateRookMoves(int pieceIndex,int startX,int startY){
-     for (int i = startX-1; i>=0; i--)
-        {
-            
-            Vector2 move = {(i) * col_width, startY * col_height};
-            if (IsValidMove(pieceIndex, move))
-            {
-                AddMove(pieceIndex, move);
-            }else{
-                break;
-            }
-            
-        }
-        for (int i = startX+1; i < COLS; i++)
-        {
-           
-                Vector2 move = {(i) * col_width, startY * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }else{
-                    break;
-                }
-            
-        }
-        for (int i = startY+1; i < ROWS; i++)
-        {
-            
-                Vector2 move = {startX * col_width, ( i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }else{
-                    break;
-                }
-            
-        }
-        for (int i = startY - 1; i >=0; i--)
-        {
-           
-                Vector2 move = {startX * col_width, (i) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }else{
-                    break;
-                }
-            
-        }
 
-}
-void GenerateBishopMoves(int pieceIndex,int startX,int startY){
-    for (int i = startX+1,j = startY + 1; i < COLS&&j<ROWS; i++,j++)
-        {
-            
-                Vector2 move = {(i) * col_width, (j) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }else{
-                    break;
-                }
-            
-        }
-        for (int i = startX-1,j=startY-1; i >=0&&j>=0; i--,j--)
-        {
-            
-                Vector2 move = {(i) * col_width, (j) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }else{
-                    break;
-                }
-            
-        }
-        for (int i = startX+1,j=startY-1; i < COLS&&j>=0; i++,j--)
-        {
-            
-                Vector2 move = {(i) * col_width, (j) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }else{
-                    break;
-                }
-            
-        }
-        for (int i = startX-1,j=startY+1; j < COLS&&i>=0; i--,j++)
-        {
-           
-                Vector2 move = {(i) * col_width, (j) * col_height};
-                if (IsValidMove(pieceIndex, move))
-                {
-                    AddMove(pieceIndex, move);
-                }else{
-                    break;
-                }
-            
-        }
-        
-}
-void GenerateAllLegalMovesForPiece(int pieceIndex)
+unsigned int setMove(short fromSquare, short toSquare, char flag,short pieceIndex,short capturedPieceIndex)
 {
-    Piece * piece = getPiece(pieceIndex);
+   
+    unsigned int moves = capturedPieceIndex<<22|pieceIndex<<16|flag << 12 | toSquare << 6 | fromSquare;
+    return moves;
+}
+
+void GenerateAllLegalMovesForPiece(int pieceIndex,int Moves[64], int* n)
+{
+    Piece *piece = getPiece(pieceIndex);
     piece->moveIndex = 0;
 
     int startX = (int)(piece->pos.x / col_width);
     int startY = (int)(piece->pos.y / col_height);
-    int squareIndex=63-(startX+startY*8);
-    Squares sqr=knightSquares[squareIndex];
-        
+    int rank=startY;
+    rank=7-rank;
+   
+    short squareIndex = (startX + rank * 8);
+    Squares sqr;
+
     switch (piece->type)
     {
     case 'P':
     {
-        
-        if(piece->isWhite){
-            sqr=whitePawnSquares[squareIndex];
-        }else{
-            sqr=blackPawnSquares[squareIndex];
+
+        if (piece->isWhite)
+        {
+            sqr = whitePawnSquares[squareIndex];
         }
-       
+        else
+        {
+            sqr = blackPawnSquares[squareIndex];
+        }
+
         break;
     }
 
     case 'R':
     {
-       
-       sqr=rookSquares[squareIndex];
-       // GenerateRookMoves(pieceIndex,startX,startY);      
+
+        sqr = rookSquares[squareIndex];
         break;
     }
 
     case 'N':
     {
-        sqr=knightSquares[squareIndex];
+        sqr = knightSquares[squareIndex];
         break;
     }
 
     case 'B':
     {
-        sqr=bishopSquares[squareIndex];
-       // GenerateBishopMoves(pieceIndex,startX,startY);
+        sqr = bishopSquares[squareIndex];
         break;
-        
     }
 
     case 'Q':
     {
 
-       sqr=queenSquares[squareIndex];
-        
+        sqr = queenSquares[squareIndex];
+
         break;
     }
 
     case 'K':
     {
 
-        sqr=kingSquares[squareIndex];
+        sqr = kingSquares[squareIndex];
 
         if (!piece->hasMoved)
         {
 
             if (IsValidMove(pieceIndex, (Vector2){(startX + 2) * col_width, startY * col_height}))
             {
-                AddMove(pieceIndex, (Vector2){(startX + 2) * col_width, startY * col_height});
+                //AddMove(pieceIndex, (Vector2){(startX + 2) * col_width, startY * col_height});
+                Moves[(*n)++]=setMove(squareIndex,squareIndex+2,FLAG_CASTLING,pieceIndex,-1);
             }
 
             if (IsValidMove(pieceIndex, (Vector2){(startX - 2) * col_width, startY * col_height}))
             {
-                AddMove(pieceIndex, (Vector2){(startX - 2) * col_width, startY * col_height});
+                //AddMove(pieceIndex, (Vector2){(startX - 2) * col_width, startY * col_height});
+                Moves[(*n)++]=setMove(squareIndex,squareIndex-2,FLAG_CASTLING,pieceIndex,-1);
             }
         }
         break;
@@ -180,49 +91,51 @@ void GenerateAllLegalMovesForPiece(int pieceIndex)
         break;
     }
     for (int i = 0; i < sqr.n; i++)
-        {
-            char sq = 63-sqr.to[i];
-            Vector2 newPos=(Vector2){.x=(sq % 8)*col_width,.y=(sq/8)*col_height};
-           
-            if (IsValidMove(pieceIndex, newPos))
-            {
-                AddMove(pieceIndex, newPos);
-            }
-            
-        }
-    
-}
-void GenerateAllLegalMoves(bool forWhite)
-{
-    currentMovesIndex = -1;
-    for (int i = 0; i < pieceCount; i++)
     {
-        Piece * p=getPiece(i);
-        if (p->isWhite == forWhite && p->canDraw)
+        char sq = sqr.to[i];
+        Vector2 newPos = squareToVector2(sq);
+        if (IsValidMove(pieceIndex, newPos))
         {
-            GenerateAllLegalMovesForPiece(i);
-            // Piece * p=&pieces[i];
-            // SortMovesByPriority(p);
-            currentMovesIndex += p->moveIndex;
+            //AddMove(pieceIndex, newPos);
+            
+            Moves[(*n)++]=setMove(squareIndex,sq,FLAG_NONE,pieceIndex,-1);
         }
     }
     
+}
+int GenerateAllLegalMoves(bool forWhite,int Moves[64])
+{
+    int n=0;
+    
+    for (int i = 0; i < pieceCount; i++)
+    {
+        Piece *p = getPiece(i);
+        if (p->isWhite == forWhite && p->canDraw)
+        {
+            GenerateAllLegalMovesForPiece(i,Moves,&n);
+            // Piece * p=&pieces[i];
+            // SortMovesByPriority(p);
+           
+        }
+    }
+    return n;
 }
 int GetMovePriority(Move *move)
 {
-    if (move->capturePieceType){
-            int capt=GetPieceValue(move->capturePieceType);
-            int val=GetPieceValue(move->pieceType);
-            return (capt-val)*100;
+    if (move->capturePieceType)
+    {
+        int capt = GetPieceValue(move->capturePieceType);
+        int val = GetPieceValue(move->pieceType);
+        return (capt - val) * 100;
     }
     if (move->isCheck)
         return 50;
-       
+
     return 0;
 }
 void UpdateLastMove(int pieceIndex, Vector2 newPos)
 {
-    Piece * P=getPiece(pieceIndex);
+    Piece *P = getPiece(pieceIndex);
     lastMove.startPos = P->pos;
     lastMove.endPos = newPos;
     lastMove.pieceType = P->type;
@@ -238,11 +151,10 @@ void HandleEnPassant(int pieceIndex, Vector2 newPos)
         Vector2 capturedPos = {newPos.x, lastMove.endPos.y};
         for (int i = 0; i < pieceCount; i++)
         {
-            Piece *P=getPiece(i);
+            Piece *P = getPiece(i);
 
-            if ((P->type == 'P')&&IsVector2Equal(P->pos,capturedPos)&&
-                P->isWhite != piece->isWhite 
-                )
+            if ((P->type == 'P') && IsVector2Equal(P->pos, capturedPos) &&
+                P->isWhite != piece->isWhite)
             {
                 P->canDraw = false;
                 break;
@@ -258,24 +170,24 @@ void AddMove(int pieceIndex, Vector2 endPos)
     move.endPos = endPos;
     move.pieceisWhite = piece->isWhite;
     move.pieceType = piece->type;
-    move.capturePieceType=IsCapture(endPos,pieceIndex);
-    Vector2 kinPos=FindKingPosition(!move.pieceisWhite);
-    endPos=piece->pos;
-    piece->pos=move.endPos;
-    move.isCheck=IsValidMoveWithoutCheck(pieceIndex,kinPos);
-    piece->pos=endPos;
+    move.capturePieceType = IsCapture(endPos, pieceIndex);
+    Vector2 kinPos = FindKingPosition(!move.pieceisWhite);
+    endPos = piece->pos;
+    piece->pos = move.endPos;
+    move.isCheck = IsValidMoveWithoutCheck(pieceIndex, kinPos);
+    piece->pos = endPos;
     piece->moves[piece->moveIndex++] = move;
-   
 }
-int CompareMoves(const void *a, const void *b) {
+int CompareMoves(const void *a, const void *b)
+{
     Move *moveA = (Move *)a;
     Move *moveB = (Move *)b;
     return GetMovePriority(moveB) - GetMovePriority(moveA);
 }
-void SortMovesByPriority(Piece *piece) {
+void SortMovesByPriority(Piece *piece)
+{
     qsort(piece->moves, piece->moveIndex, sizeof(Move), CompareMoves);
 }
-
 int GetPieceValue(char type){
     switch (type)
     {
