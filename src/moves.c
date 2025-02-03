@@ -72,13 +72,13 @@ void GenerateAllLegalMovesForPiece(int pieceIndex,int Moves[64], int* n)
         if (!piece->hasMoved)
         {
 
-            if (IsValidMove(pieceIndex, (Vector2){(startX + 2) * col_width, startY * col_height}))
+            if (IsValidMove(pieceIndex, (Vector2){(startX + 2) * col_width, startY * col_height},(int*)-1))
             {
                 //AddMove(pieceIndex, (Vector2){(startX + 2) * col_width, startY * col_height});
                 Moves[(*n)++]=setMove(squareIndex,squareIndex+2,FLAG_CASTLING,pieceIndex,-1);
             }
 
-            if (IsValidMove(pieceIndex, (Vector2){(startX - 2) * col_width, startY * col_height}))
+            if (IsValidMove(pieceIndex, (Vector2){(startX - 2) * col_width, startY * col_height},(int *)-1))
             {
                 //AddMove(pieceIndex, (Vector2){(startX - 2) * col_width, startY * col_height});
                 Moves[(*n)++]=setMove(squareIndex,squareIndex-2,FLAG_CASTLING,pieceIndex,-1);
@@ -94,11 +94,12 @@ void GenerateAllLegalMovesForPiece(int pieceIndex,int Moves[64], int* n)
     {
         char sq = sqr.to[i];
         Vector2 newPos = squareToVector2(sq);
-        if (IsValidMove(pieceIndex, newPos))
+        int capturedIndex=-1;
+        if (IsValidMove(pieceIndex, newPos,&capturedIndex))
         {
             //AddMove(pieceIndex, newPos);
-            
-            Moves[(*n)++]=setMove(squareIndex,sq,FLAG_NONE,pieceIndex,-1);
+           
+            Moves[(*n)++]=setMove(squareIndex,sq,capturedIndex!=-1,pieceIndex,capturedIndex);
         }
     }
     
@@ -118,19 +119,17 @@ int GenerateAllLegalMoves(bool forWhite,int Moves[64])
            
         }
     }
+    SortMovesByPriority(Moves,n);
     return n;
 }
-int GetMovePriority(Move *move)
+int GetMovePriority(int move)
 {
-    if (move->capturePieceType)
+    char Flag =getFlagFromMove(move);
+    if (Flag==FLAG_CAPTURE)
     {
-        int capt = GetPieceValue(move->capturePieceType);
-        int val = GetPieceValue(move->pieceType);
-        return (capt - val) * 100;
+       
+        return (2);
     }
-    if (move->isCheck)
-        return 50;
-
     return 0;
 }
 void UpdateLastMove(int pieceIndex, Vector2 newPos)
@@ -180,29 +179,29 @@ void AddMove(int pieceIndex, Vector2 endPos)
 }
 int CompareMoves(const void *a, const void *b)
 {
-    Move *moveA = (Move *)a;
-    Move *moveB = (Move *)b;
+    int moveA = *(int *)a;
+    int  moveB = *(int *)b;
     return GetMovePriority(moveB) - GetMovePriority(moveA);
 }
-void SortMovesByPriority(Piece *piece)
+void SortMovesByPriority(int Moves[64],int n)
 {
-    qsort(piece->moves, piece->moveIndex, sizeof(Move), CompareMoves);
+    qsort(Moves, n, sizeof(int), CompareMoves);
 }
 int GetPieceValue(char type){
     switch (type)
     {
     case 'P':
-        return 100;
+        return 1;
     case 'K':
-        return 20000;
+        return 20;
     case 'Q':
-        return 900;
+        return 9;
     case 'B':
-        return 330;
+        return 3;
     case 'R':
-        return 500;
+        return 5;
     case 'N':
-        return 300;
+        return 3;
     default:
         break;
     }

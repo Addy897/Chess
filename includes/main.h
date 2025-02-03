@@ -53,7 +53,7 @@
         extern void PlayMove(bool withWhite);
         extern void PlayMoveOnBoard(Vector2 new_pos);
         extern void HighlightPreviousMove();
-        extern void SortMovesByPriority(Piece *piece);
+        extern void SortMovesByPriority(int MOves[64],int n);
         extern bool IsValidMoveWithoutCheck(int pieceIndex, Vector2 newPos);
         extern bool IsKingInCheck(bool isWhite);
         extern bool IsSquareUnderAttack(Vector2 square, bool isWhite);
@@ -61,7 +61,7 @@
         extern bool IsStaleMate(bool isWhite);
         extern bool IsPromotionSquare(Vector2 pos, bool isWhite);
         extern bool IsVector2Equal(Vector2 a, Vector2 b);
-        extern bool IsValidMove(int pieceIndex, Vector2 newPos);
+        extern bool IsValidMove(int pieceIndex, Vector2 newPos,int*);
         extern bool IsSquareUnderAttack(Vector2 square, bool isWhite);
         extern bool IsLegalMove(int pieceIndex, Vector2 newPos);
         extern bool IsSquareOccupied(Vector2 pos);
@@ -69,15 +69,17 @@
 
 
         extern char getMovePieceIndex(unsigned int move);
+        extern char getMoveCapturedPieceIndex(unsigned int move);
         extern char getMoveFrom(int move);
         extern char getMoveTo(int move);
+        extern char getFlagFromMove(int move);
         extern int GetPieceValue(char type);
         extern int IsCapture(Vector2 square, bool isWhite);
         extern int CalulatePossiblePosition(int depth,bool isWhiteTurn);
         extern double AlphaBeta(int depth, double alpha, double beta, bool isMaximizingPlayer);
         extern double Eval();   
         extern double IterativeDeepening(int maxDepth, int alpha, int beta, bool isMaximizingPlayer, double timeLimitInSeconds);
-        extern int GetMovePriority(Move *move);
+        extern int GetMovePriority(int move);
         extern Vector2 FindKingPosition(bool isWhite);
         extern Vector2 moveToVector2(int move);
         extern Vector2 squareToVector2(char to);

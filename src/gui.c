@@ -263,7 +263,6 @@ void PlayMoveOnBoard(Vector2 newPos)
                 }
             }
             HandleEnPassant(lastSelectedPiece, newPos);
-
             UpdateLastMove(lastSelectedPiece, newPos);
             if (lastPiece->pos.x != newPos.x || lastPiece->pos.y != newPos.y)
             {

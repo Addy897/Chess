@@ -91,7 +91,7 @@ void PlayMove(bool withWhite)
                 
             MoveState state = ApplyMove(pieceIndex, newPos);
 
-            double eval = AlphaBeta(3, INT_MIN, INT_MAX, !withWhite);
+            double eval = AlphaBeta(4, INT_MIN, INT_MAX, !withWhite);
 
             UndoMove(state);
             if (eval < score)
@@ -240,6 +240,9 @@ MoveState ApplyMove(int pieceIndex, Vector2 newPos)
 char getMovePieceIndex(unsigned int move){
     return (move>>16)&(63);
 }
+char getMoveCapturedPieceIndex(unsigned int move){
+    return (move>>22)&(63);
+}
 char getMoveFrom(int move){
     return (move&63);
 }
@@ -252,4 +255,7 @@ Vector2 moveToVector2(int move){
 }
 Vector2 squareToVector2(char to){
     return (Vector2){.x=(float)((to%8)*col_width),.y=(float)((7-(to/8))*col_height)};
+}
+char getFlagFromMove(int move){
+    return (move>>12)&(15);
 }

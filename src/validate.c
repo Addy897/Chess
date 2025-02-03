@@ -234,7 +234,7 @@ bool IsKingInCheck(bool isWhite)
     }
     return IsSquareUnderAttack(kingPos, isWhite);
 }
-bool IsValidMove(int pieceIndex, Vector2 newPos)
+bool IsValidMove(int pieceIndex, Vector2 newPos,int* capturedIndex)
 {
     if (pieceIndex < 0 || pieceIndex >= pieceCount)
         return false;
@@ -249,8 +249,14 @@ bool IsValidMove(int pieceIndex, Vector2 newPos)
 
 
     MoveState Move = ApplyMove(pieceIndex, newPos);
-    pieces[pieceIndex].pos = newPos;
-    int capturedIndex=fmax(Move.capturedIndex,Move.enPassantCapturedIndex);
+    originalPiece->pos = newPos;
+    if(capturedIndex!=(int *)-1){
+        if(Move.capturedIndex!=-1){
+            *capturedIndex=Move.capturedIndex;
+        }else if(Move.enPassantCapturedIndex!=-1){
+            *capturedIndex=Move.enPassantCapturedIndex;
+        }
+    }
     bool stillInCheck = IsKingInCheck(originalPiece->isWhite);
     UndoMove(Move);
     
@@ -307,7 +313,7 @@ bool IsCheckMate(bool isWhite)
          Piece * p = getPiece(i);
         if (p->isWhite == isWhite && p->canDraw)
         {
-              Squares possibleMoves;
+            Squares possibleMoves;
             int rank=(p->pos.y/col_height)*8;
             int file=(p->pos.x/col_width);
             int index=63-(rank+file);
@@ -337,7 +343,7 @@ bool IsCheckMate(bool isWhite)
                 for (int j = 0; j < possibleMoves.n; j++) {  
                     char sq = 63-possibleMoves.to[j];
                     Vector2 newPos=(Vector2){.x=(sq % 8)*col_width,.y=(sq/8)*col_height};
-                    if (IsValidMove(i, newPos))
+                    if (IsValidMove(i, newPos,(int*)-1))
                     {
                         return false;
                     }
@@ -386,7 +392,7 @@ bool IsStaleMate(bool isWhite)
                 for (int y = 0; y < ROWS; y++)
                 {
                     Vector2 newPos = {x * col_width, y * col_height};
-                    if (IsValidMove(i, newPos))
+                    if (IsValidMove(i, newPos,(int*)-1))
                     {
                         return false;
                     }

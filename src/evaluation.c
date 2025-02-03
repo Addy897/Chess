@@ -178,21 +178,7 @@ double Eval()
             blackKing=p->pos;
            }
         }
-        // if (p->type == 'P')
-        // {
-        //     if (p->isWhite)
-        //     {
-        //         D += HasDoubledPawns(true);
-        //         I += IsIsolatedPawn(i);
-        //         S += IsBlockedPawn(i);
-        //     }
-        //     else
-        //     {
-        //         D_ += HasDoubledPawns(false);
-        //         I_ += IsIsolatedPawn(i);
-        //         S_ += IsBlockedPawn(i);
-        //     }
-        // }
+        
     }
     float wEval=0;
     float bEval=0;
@@ -208,11 +194,11 @@ double Eval()
     bEval += EvaluatePieceSquareTables (false, blackEndgameWeight,blackKing);
     if (IsCheckMate(true))
     {
-        return INT_MIN;
+        bEval+=99999;
     }
     else if (IsCheckMate(false))
     {
-       return INT_MAX;
+       wEval+=99999;
     }
     
 
