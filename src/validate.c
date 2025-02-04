@@ -357,7 +357,7 @@ bool IsCheckMate(bool isWhite)
 }
 bool IsPromotionSquare(Vector2 pos, bool isWhite)
 {
-    return (isWhite && pos.y == 0) || (!isWhite && pos.y == screenHeight - col_height);
+    return (isWhite && pos.y == 0) || (!isWhite && pos.y == 7*col_height);
 }
 bool IsStaleMate(bool isWhite)
 {
@@ -387,11 +387,36 @@ bool IsStaleMate(bool isWhite)
          Piece * p = getPiece(i);
         if (p->isWhite == isWhite && p->canDraw)
         {
-            for (int x = 0; x < COLS; x++)
-            {
-                for (int y = 0; y < ROWS; y++)
-                {
-                    Vector2 newPos = {x * col_width, y * col_height};
+            Squares possibleMoves;
+            int rank=(p->pos.y/col_height)*8;
+            int file=(p->pos.x/col_width);
+            int index=63-(rank+file);
+            switch (p->type) {
+                case 'P':
+                    possibleMoves = p->isWhite ? whitePawnSquares[index] : blackPawnSquares[index];
+                    break;
+                case 'N':
+                    possibleMoves = knightSquares[index];
+                    break;
+                case 'B':
+                    possibleMoves = bishopSquares[index];
+                    break;
+                case 'R':
+                    possibleMoves = rookSquares[index];
+                    break;
+                case 'Q':
+                    possibleMoves = queenSquares[index];
+                    break;
+                case 'K':
+                    possibleMoves = kingSquares[index];
+                    break;
+                default:
+                    break;
+            }
+            if (possibleMoves.n != -1) {
+                for (int j = 0; j < possibleMoves.n; j++) {  
+                    char sq = 63-possibleMoves.to[j];
+                    Vector2 newPos=(Vector2){.x=(sq % 8)*col_width,.y=(sq/8)*col_height};
                     if (IsValidMove(i, newPos,(int*)-1))
                     {
                         return false;

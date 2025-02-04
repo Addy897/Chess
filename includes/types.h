@@ -61,6 +61,8 @@ typedef enum{
     FLAG_NONE,
     FLAG_CAPTURE,
     FLAG_CASTLING,
+    FLAG_CHECKMATE,
+    FLAG_PROMOTION,
 }FLAGS;
 
 

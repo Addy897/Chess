@@ -26,7 +26,7 @@ double AlphaBeta(int depth, double alpha, double beta, bool isMaximizingPlayer)
 {
     if (depth == 0 || IsCheckMate(isMaximizingPlayer) || IsStaleMate(isMaximizingPlayer))
     {
-        return Eval();
+        return Eval() +1/depth;
     }
     int Moves[64] = {0};
     int n = GenerateAllLegalMoves(isMaximizingPlayer, Moves);

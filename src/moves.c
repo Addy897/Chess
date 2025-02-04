@@ -98,8 +98,14 @@ void GenerateAllLegalMovesForPiece(int pieceIndex,int Moves[64], int* n)
         if (IsValidMove(pieceIndex, newPos,&capturedIndex))
         {
             //AddMove(pieceIndex, newPos);
-           
+           if(IsCheckMate(!piece->isWhite)){
+             Moves[(*n)++]=setMove(squareIndex,sq,FLAG_CHECKMATE,pieceIndex,capturedIndex);
+           }else if(IsPromotionSquare(newPos,piece->isWhite)){
+                Moves[(*n)++]=setMove(squareIndex,sq,FLAG_PROMOTION,pieceIndex,capturedIndex);
+           }
+           else{
             Moves[(*n)++]=setMove(squareIndex,sq,capturedIndex!=-1,pieceIndex,capturedIndex);
+           }
         }
     }
     
@@ -114,9 +120,6 @@ int GenerateAllLegalMoves(bool forWhite,int Moves[64])
         if (p->isWhite == forWhite && p->canDraw)
         {
             GenerateAllLegalMovesForPiece(i,Moves,&n);
-            // Piece * p=&pieces[i];
-            // SortMovesByPriority(p);
-           
         }
     }
     SortMovesByPriority(Moves,n);
@@ -125,10 +128,18 @@ int GenerateAllLegalMoves(bool forWhite,int Moves[64])
 int GetMovePriority(int move)
 {
     char Flag =getFlagFromMove(move);
+    if (Flag==FLAG_CHECKMATE)
+    {
+       
+        return (3);
+    }
     if (Flag==FLAG_CAPTURE)
     {
        
         return (2);
+    }
+    if(Flag == FLAG_PROMOTION){
+        return 1;
     }
     return 0;
 }
@@ -161,22 +172,7 @@ void HandleEnPassant(int pieceIndex, Vector2 newPos)
         }
     }
 }
-void AddMove(int pieceIndex, Vector2 endPos)
-{
-    Piece *piece = getPiece(pieceIndex);
-    Move move;
-    move.startPos = piece->pos;
-    move.endPos = endPos;
-    move.pieceisWhite = piece->isWhite;
-    move.pieceType = piece->type;
-    move.capturePieceType = IsCapture(endPos, pieceIndex);
-    Vector2 kinPos = FindKingPosition(!move.pieceisWhite);
-    endPos = piece->pos;
-    piece->pos = move.endPos;
-    move.isCheck = IsValidMoveWithoutCheck(pieceIndex, kinPos);
-    piece->pos = endPos;
-    piece->moves[piece->moveIndex++] = move;
-}
+
 int CompareMoves(const void *a, const void *b)
 {
     int moveA = *(int *)a;

@@ -91,7 +91,7 @@ void PlayMove(bool withWhite)
                 
             MoveState state = ApplyMove(pieceIndex, newPos);
 
-            double eval = AlphaBeta(4, INT_MIN, INT_MAX, !withWhite);
+            double eval = IterativeDeepening(5, INT_MIN, INT_MAX, !withWhite,0.1);
 
             UndoMove(state);
             if (eval < score)

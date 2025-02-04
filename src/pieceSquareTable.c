@@ -2,7 +2,7 @@
 
 
 int pawns[] = {
-    100,  100,  100,  100,  100,  100,  100,  100,
+    900,  900,  900,  900,  900,  900,  900,  900,
     50, 50, 50, 50, 50, 50, 50, 50,
     10, 10, 20, 30, 30, 20, 10, 10,
     5,  5, 10, 25, 25, 10,  5,  5,
@@ -104,7 +104,7 @@ float EvaluatePieceSquareTables (bool isWhite, float endgamePhaseWeight,Vector2 
     }
 
     int kingEarlyPhase = kingMiddle[rank*8+file];
-    //value +=  (kingEarlyPhase * (1 - endgamePhaseWeight));
+    value +=  (kingEarlyPhase * (1 - endgamePhaseWeight));
 
     return value;
 }		
