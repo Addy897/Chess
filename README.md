@@ -16,7 +16,7 @@ A modern chess engine built with [Raylib](https://www.raylib.com/) for graphics 
 - **AI Opponent**:
   - Minimax with Alpha-Beta Pruning for efficient move evaluation
   - Move Odering
-  - Iterative Search(Not a complete implementation)
+  - Iterative Deepening(Not a complete implementation)
 - **Graphics**:
   - 2D chessboard with piece sprites
   - Highlighting legal moves
