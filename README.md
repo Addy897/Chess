@@ -15,6 +15,8 @@ A modern chess engine built with [Raylib](https://www.raylib.com/) for graphics 
   - Checkmate and stalemate detection(Draw by three fold repetition is not implemented)
 - **AI Opponent**:
   - Minimax with Alpha-Beta Pruning for efficient move evaluation
+  - Move Odering
+  - Iterative Search(Not a complete implementation)
 - **Graphics**:
   - 2D chessboard with piece sprites
   - Highlighting legal moves
